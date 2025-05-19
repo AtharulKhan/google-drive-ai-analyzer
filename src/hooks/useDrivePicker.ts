@@ -77,8 +77,7 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
         if (pickFolder) {
           view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
             .setIncludeFolders(true)
-            .setSelectFolderEnabled(true)
-            .setMimeTypes('application/vnd.google-apps.folder');
+            .setSelectFolderEnabled(true);
         } else {
           view = new google.picker.DocsView()
             .setMimeTypes([
@@ -107,8 +106,6 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
                 parentId: doc.parentId
               }));
               callback(files);
-            } else if (data.action === google.picker.Action.CANCEL) {
-              console.log('User canceled the picker');
             }
           })
           .build();

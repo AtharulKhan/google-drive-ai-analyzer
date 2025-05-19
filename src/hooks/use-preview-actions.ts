@@ -60,7 +60,7 @@ export const usePreviewActions = ({
       return;
     }
     
-    const html = generatePreviewHTML(data, moduleName, title, columns, settings.locale);
+    const html = generatePreviewHTML(data, moduleName, title, columns);
     setPreviewHTML(html);
     setPreviewOpen(true);
   };
@@ -76,7 +76,7 @@ export const usePreviewActions = ({
     setIsActionInProgress(true);
     
     try {
-      await exportModuleData(moduleName, 'pdf', data, {
+      await exportModuleData(moduleName, 'pdf', {
         title: title || `Rapport - ${moduleName}`,
         columns: columns
       });

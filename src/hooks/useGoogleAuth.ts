@@ -137,15 +137,17 @@ export function useGoogleAuth() {
       return;
     }
 
-    google.accounts.oauth2.revoke(authState.accessToken || '', () => {
-      setAuthState({
-        isSignedIn: false,
-        accessToken: null,
-        loading: false,
-        error: null
+    if (authState.accessToken) {
+      google.accounts.oauth2.revoke(authState.accessToken, () => {
+        setAuthState({
+          isSignedIn: false,
+          accessToken: null,
+          loading: false,
+          error: null
+        });
+        toast.info("Signed out from Google");
       });
-      toast.info("Signed out from Google");
-    });
+    }
   }, [authState.accessToken]);
 
   return {

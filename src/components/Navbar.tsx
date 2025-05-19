@@ -14,8 +14,8 @@ import {
   Moon,
   ChevronRight,
   Settings,
-  Users,
-  FileText
+  FileText,
+  Cloud
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -54,6 +54,7 @@ const Navbar = () => {
 
   const navItems = [
     { title: 'Tableau de bord', path: '/', icon: Home },
+    { title: 'Google Drive AI Analyzer', path: '/drive-analyzer', icon: Cloud },
     { title: 'Parcelles', path: '/parcelles', icon: MapPin },
     { title: 'Cultures', path: '/cultures', icon: Sprout },
     { title: 'Inventaire', path: '/inventaire', icon: Package },
