@@ -1,5 +1,6 @@
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
@@ -9,6 +10,7 @@ import CropsPage from "./pages/CropsPage";
 import InventoryPage from "./pages/InventoryPage";
 import FinancePage from "./pages/FinancePage";
 import StatsPage from "./pages/StatsPage";
+import DriveAnalyzerPage from "./pages/DriveAnalyzerPage";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import { CRMProvider } from "./contexts/CRMContext";
@@ -25,6 +27,7 @@ const routes = [
   { path: "/inventaire", element: <InventoryPage /> },
   { path: "/finances", element: <FinancePage /> },
   { path: "/statistiques", element: <StatisticsProvider><StatsPage /></StatisticsProvider> },
+  { path: "/drive-analyzer", element: <DriveAnalyzerPage /> },
   { path: "/rapports", element: <Navigate to="/statistiques" replace /> },
   { path: "/parametres", element: <Navigate to="/" replace /> },
   { path: "/dashboard", element: <Navigate to="/" replace /> },
@@ -76,6 +79,7 @@ const App = () => {
                   />
                 ))}
               </Routes>
+              <Toaster />
             </TooltipProvider>
           </BrowserRouter>
         </CRMProvider>

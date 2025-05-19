@@ -1,69 +1,76 @@
-# Welcome to your Lovable project
 
-## Project info
+# Google Drive AI Analyzer
 
-**URL**: https://lovable.dev/projects/721b7097-37cd-4dc4-8946-0910b3ea8bc7
+This application allows you to select documents from Google Drive (Docs, Sheets, Slides, PDFs) and analyze them using AI through OpenRouter.
 
-## How can I edit this code?
+## Setup Instructions
 
-There are several ways of editing your application.
+### 1. Google Cloud Console Setup
 
-**Use Lovable**
+1. Create a new Google Cloud Project (or use an existing one)
+2. Enable the following APIs:
+   - Google Drive API
+   - Google Docs API
+   - Google Sheets API
+   - Google Slides API
+   - Google Picker API
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/721b7097-37cd-4dc4-8946-0910b3ea8bc7) and start prompting.
+3. Configure OAuth consent screen:
+   - Set Application type to "External"
+   - Add required scopes:
+     - `https://www.googleapis.com/auth/drive.readonly`
+     - `https://www.googleapis.com/auth/documents.readonly`
+     - `https://www.googleapis.com/auth/spreadsheets.readonly`
+     - `https://www.googleapis.com/auth/presentations.readonly`
+   - Add your domain(s) under Authorized domains (including localhost for development)
 
-Changes made via Lovable will be committed automatically to this repo.
+4. Create OAuth 2.0 credentials:
+   - Go to Credentials → Create OAuth Client ID → Web application
+   - Add authorized JavaScript origins:
+     - `http://localhost:5173` (for Vite development)
+     - Your production URL
+   - Add authorized redirect URIs (same as origins)
+   - Copy the Client ID for the next step
 
-**Use your preferred IDE**
+### 2. Environment Setup
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Create a `.env.local` file in the project root with the following:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```
+VITE_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
+VITE_OPENROUTER_API_KEY=sk-or-xxxxx...
+```
 
-Follow these steps:
+### 3. Installation and Running
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```bash
+# Install dependencies
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Features
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Authenticate with Google OAuth
+- Select individual files or folders from Google Drive
+- Extract text content from Docs, Sheets, Slides, and PDFs
+- Process multiple files together
+- Send to OpenRouter AI for analysis (e.g., summarization)
+- Display AI-generated results in markdown format
 
-**Use GitHub Codespaces**
+## Limitations
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Maximum character limit per file (default: 200,000 chars)
+- Limited number of files processed from a folder (configurable)
+- Only processes text-based content (no image analysis)
+- Requires internet connection for Google API and OpenRouter API access
 
-## What technologies are used for this project?
+## Adding OpenRouter API Key
 
-This project is built with .
+Get an OpenRouter API key from [OpenRouter](https://openrouter.ai/) and add it to your `.env.local` file.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/721b7097-37cd-4dc4-8946-0910b3ea8bc7) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is built with React, Vite, TypeScript, and shadcn/ui.
