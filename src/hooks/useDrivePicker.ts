@@ -37,9 +37,9 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      window.gapi.load('picker', () => {
+      window.gapi.load('picker', { callback: () => {
         setPickerApiLoaded(true);
-      });
+      }});
     };
     script.onerror = () => {
       toast.error("Failed to load Google Picker API");
@@ -56,6 +56,9 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
   useEffect(() => {
     if (accessToken && pickerApiLoaded && !pickerInitialized) {
       setPickerInitialized(true);
+    } else if (!accessToken && pickerInitialized) {
+      // Reset when token becomes unavailable
+      setPickerInitialized(false);
     }
   }, [accessToken, pickerApiLoaded, pickerInitialized]);
 
@@ -119,8 +122,11 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
     [pickerInitialized, accessToken]
   );
 
+  // Check if the picker is ready to use
+  const isReady = pickerInitialized && !!accessToken;
+
   return {
     openPicker,
-    isReady: pickerInitialized
+    isReady
   };
 }

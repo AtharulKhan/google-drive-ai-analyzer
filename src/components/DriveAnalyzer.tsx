@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Loader2, FileText, FolderOpen, Trash2, RefreshCw } from "lucide-react";
+import { Check, Loader2, FileText, FolderOpen, Trash2, RefreshCw, Settings } from "lucide-react";
 import { toast } from 'sonner';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { useDrivePicker, GoogleFile } from '@/hooks/useDrivePicker';
@@ -27,9 +28,7 @@ const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
 
 export default function DriveAnalyzer() {
-  const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
-  const { openPicker, isReady } = useDrivePicker({ accessToken });
-
+  // State variables
   const [selectedFiles, setSelectedFiles] = useState<GoogleFile[]>([]);
   const [displayFiles, setDisplayFiles] = useState<GoogleFile[]>([]);
   const [userPrompt, setUserPrompt] = useState('Summarize this content in detail, highlighting key points and insights.');
@@ -46,14 +45,18 @@ export default function DriveAnalyzer() {
   const [aiOutput, setAiOutput] = useState('');
   const [activeTab, setActiveTab] = useState('files');
 
+  // Hooks
+  const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
+  const { openPicker, isReady } = useDrivePicker({ accessToken });
+  
   // When selected files change, update display files
   useEffect(() => {
     setDisplayFiles(selectedFiles.slice(0, 100)); // Limit display to first 100 files
   }, [selectedFiles]);
 
   // Handle picking files from Drive
-  const handlePickFiles = () => {
-    if (!isReady || !accessToken) {
+  const handlePickFiles = useCallback(() => {
+    if (!isReady) {
       toast.error("Google Drive Picker is not ready");
       return;
     }
@@ -64,11 +67,11 @@ export default function DriveAnalyzer() {
         toast.success(`Selected ${files.length} file(s)`);
       }
     });
-  };
+  }, [isReady, openPicker]);
 
   // Handle picking a folder from Drive
-  const handlePickFolder = async () => {
-    if (!isReady || !accessToken) {
+  const handlePickFolder = useCallback(async () => {
+    if (!isReady) {
       toast.error("Google Drive Picker is not ready");
       return;
     }
@@ -86,6 +89,10 @@ export default function DriveAnalyzer() {
       });
 
       try {
+        if (!accessToken) {
+          throw new Error("No access token available");
+        }
+        
         const folderContents = await listFolderContents(folder.id, accessToken);
         
         // Filter for supported file types
@@ -119,16 +126,16 @@ export default function DriveAnalyzer() {
         });
       }
     });
-  };
+  }, [isReady, openPicker, accessToken, maxFiles]);
 
   // Clear selected files
-  const handleClearFiles = () => {
+  const handleClearFiles = useCallback(() => {
     setSelectedFiles([]);
     setDisplayFiles([]);
-  };
+  }, []);
 
   // Process files and send to OpenRouter for analysis
-  const handleRunAnalysis = async () => {
+  const handleRunAnalysis = useCallback(async () => {
     if (!accessToken) {
       toast.error("Please sign in to Google Drive first");
       return;
@@ -230,7 +237,13 @@ export default function DriveAnalyzer() {
         processedFiles: 0
       });
     }
-  };
+  }, [accessToken, selectedFiles, userPrompt, aiModel]);
+
+  // Debug information
+  useEffect(() => {
+    console.log("Auth state:", { isSignedIn, accessToken: !!accessToken, loading });
+    console.log("Picker ready:", isReady);
+  }, [isSignedIn, accessToken, loading, isReady]);
 
   return (
     <div className="container mx-auto p-4 max-w-6xl">
@@ -243,7 +256,13 @@ export default function DriveAnalyzer() {
                 Select documents from Google Drive and analyze them with AI
               </CardDescription>
             </div>
-            <div>
+            <div className="flex items-center gap-2">
+              <Link to="/settings">
+                <Button variant="outline" size="icon">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </Link>
+              
               {!isSignedIn && !loading && (
                 <Button onClick={signIn} className="bg-blue-600 hover:bg-blue-700">
                   Sign in with Google
