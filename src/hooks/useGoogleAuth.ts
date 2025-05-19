@@ -22,9 +22,10 @@ export function useGoogleAuth() {
   // Get the client ID from localStorage or default to empty string
   const savedClientId = localStorage.getItem('googleClientId') || '';
   
+  // Initialize auth state with stored values from localStorage if available
   const [authState, setAuthState] = useState<GoogleAuthState>({
-    isSignedIn: false,
-    accessToken: null,
+    isSignedIn: localStorage.getItem('googleIsSignedIn') === 'true',
+    accessToken: localStorage.getItem('googleAccessToken'),
     loading: false,
     error: null,
     clientId: savedClientId
@@ -86,7 +87,20 @@ export function useGoogleAuth() {
         }
       });
 
-      setAuthState(prev => ({ ...prev, loading: false }));
+      // If we have an access token stored, check if it's still valid
+      const storedToken = localStorage.getItem('googleAccessToken');
+      if (storedToken) {
+        // We can't directly check token validity without making an API call
+        // The token will be used and if it fails, our error handling will clear it
+        setAuthState(prev => ({ 
+          ...prev, 
+          loading: false, 
+          isSignedIn: true,
+          accessToken: storedToken
+        }));
+      } else {
+        setAuthState(prev => ({ ...prev, loading: false }));
+      }
     } catch (error) {
       console.error('Error initializing Google API client:', error);
       setAuthState(prev => ({ 
@@ -130,10 +144,17 @@ export function useGoogleAuth() {
               loading: false,
               error: response.error
             }));
+            // Clear storage in case of error
+            localStorage.removeItem('googleIsSignedIn');
+            localStorage.removeItem('googleAccessToken');
             toast.error(`Authentication failed: ${response.error}`);
             return;
           }
 
+          // Store auth state in localStorage for persistence
+          localStorage.setItem('googleIsSignedIn', 'true');
+          localStorage.setItem('googleAccessToken', response.access_token);
+          
           setAuthState(prev => ({
             ...prev,
             isSignedIn: true,
@@ -155,6 +176,9 @@ export function useGoogleAuth() {
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to sign in with Google'
       }));
+      // Clear storage in case of error
+      localStorage.removeItem('googleIsSignedIn');
+      localStorage.removeItem('googleAccessToken');
       toast.error("Failed to sign in with Google");
     }
   }, [authState.clientId]);
@@ -168,6 +192,10 @@ export function useGoogleAuth() {
 
     if (authState.accessToken) {
       google.accounts.oauth2.revoke(authState.accessToken, () => {
+        // Clear storage
+        localStorage.removeItem('googleIsSignedIn');
+        localStorage.removeItem('googleAccessToken');
+        
         setAuthState(prev => ({
           ...prev,
           isSignedIn: false,

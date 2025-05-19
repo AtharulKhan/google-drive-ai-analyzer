@@ -1,21 +1,41 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { AlertCircle } from "lucide-react";
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const { clientId, setClientId } = useGoogleAuth();
   const [clientIdInput, setClientIdInput] = useState(clientId || '');
   
+  // State for OpenRouter API key
+  const [openRouterKey, setOpenRouterKey] = useState('');
+  const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
+  
+  // Load OpenRouter API key from localStorage on component mount
+  useEffect(() => {
+    const savedKey = localStorage.getItem('openRouterApiKey') || '';
+    // If key exists, show masked version
+    if (savedKey) {
+      setOpenRouterKey(savedKey);
+    }
+  }, []);
+  
   const handleSaveClientId = () => {
     if (clientIdInput.trim()) {
       setClientId(clientIdInput.trim());
+    }
+  };
+  
+  const handleSaveApiKey = () => {
+    if (openRouterKey.trim()) {
+      localStorage.setItem('openRouterApiKey', openRouterKey.trim());
+      toast.success("OpenRouter API Key saved successfully");
     }
   };
   
@@ -100,11 +120,24 @@ export default function SettingsPage() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="openrouterKey">OpenRouter API Key</Label>
+              <Label htmlFor="openrouterKey" className="flex justify-between">
+                <span>OpenRouter API Key</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-5 px-2 text-xs"
+                  onClick={() => setShowOpenRouterKey(!showOpenRouterKey)}
+                >
+                  {showOpenRouterKey ? 'Hide' : 'Show'}
+                </Button>
+              </Label>
               <Input
                 id="openrouterKey"
-                type="password"
+                type={showOpenRouterKey ? "text" : "password"}
                 placeholder="Enter your OpenRouter API Key"
+                value={openRouterKey}
+                onChange={(e) => setOpenRouterKey(e.target.value)}
+                className="font-mono"
               />
               <p className="text-xs text-muted-foreground">
                 Example: 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
@@ -113,7 +146,7 @@ export default function SettingsPage() {
           </CardContent>
           
           <CardFooter>
-            <Button>
+            <Button onClick={handleSaveApiKey} disabled={!openRouterKey.trim()}>
               Save API Key
             </Button>
           </CardFooter>

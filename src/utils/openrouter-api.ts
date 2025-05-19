@@ -1,75 +1,49 @@
 
-interface OpenRouterOptions {
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
-/**
- * Call OpenRouter API to analyze content
- */
-export async function analyzeWithOpenRouter(
-  content: string, 
-  prompt: string,
-  options: OpenRouterOptions = {}
-): Promise<string> {
-  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-  
-  if (!apiKey) {
-    console.error('OpenRouter API key not found');
-    return 'Error: OpenRouter API key not configured';
-  }
-  
-  const {
-    model = 'google/gemini-2.5-flash-preview',
-    temperature = 0.2,
-    maxTokens = 4000
-  } = options;
-  
+// Function to analyze text with OpenRouter API
+export async function analyzeWithOpenRouter(content: string, userPrompt: string, options: { model?: string } = {}) {
   try {
-    const payload = {
-      model,
-      temperature,
-      max_tokens: maxTokens,
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are a helpful assistant. Respond in GitHub-flavored Markdown. Be as comprehensive and accurate as possible based on the provided documents.'
-        },
-        { 
-          role: 'user',   
-          content: `${prompt}\n\n================ SOURCE DOCUMENTS ================\n${content}\n==================================================`
-        }
-      ]
-    };
+    // Get API key from localStorage
+    const apiKey = localStorage.getItem('openRouterApiKey');
+    
+    if (!apiKey) {
+      throw new Error("OpenRouter API key is not set. Please add it in Settings.");
+    }
+    
+    const model = options.model || 'google/gemini-2.5-flash-preview';
 
+    // Prepare the prompt by combining user prompt and content
+    const prompt = `${userPrompt.trim()}\n\n================ SOURCE DOCUMENTS ================\n${content}\n==================================================`;
+    
+    // Call the OpenRouter API
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant. Respond in GitHub‑flavored Markdown. Be as comprehensive and accurate as possible based on the provided documents. You MUST respond in Markdown format with proper headings such as #, ##, ### and proper bullet points.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenRouter API request failed (Status ${response.status}): ${errorText}`);
+      const errorData = await response.json();
+      throw new Error(`OpenRouter API error: ${errorData.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
     
-    if (data.error) {
-      throw new Error(data.error.message || `OpenRouter API error: ${JSON.stringify(data.error)}`);
+    if (!data.choices || !data.choices[0]?.message?.content) {
+      throw new Error("Invalid response from OpenRouter API");
     }
-    
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-      return data.choices[0].message.content.trim();
-    } else {
-      throw new Error('OpenRouter response malformed or no content found');
-    }
+
+    return data.choices[0].message.content;
   } catch (error) {
-    console.error('Error calling OpenRouter API:', error);
-    return `Error analyzing content: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error("Error calling OpenRouter API:", error);
+    throw error;
   }
 }

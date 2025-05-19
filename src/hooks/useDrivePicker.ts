@@ -78,11 +78,11 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
         // Create the Picker view depending on what we want to pick (files or folder)
         let view;
         if (pickFolder) {
-          view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+          view = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
             .setIncludeFolders(true)
             .setSelectFolderEnabled(true);
         } else {
-          view = new google.picker.DocsView()
+          view = new window.google.picker.DocsView()
             .setMimeTypes([
               'application/vnd.google-apps.document',
               'application/vnd.google-apps.spreadsheet',
@@ -93,13 +93,13 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
         }
 
         // Build and display the picker
-        const picker = new google.picker.PickerBuilder()
+        const picker = new window.google.picker.PickerBuilder()
           .addView(view)
           .setOAuthToken(accessToken)
-          .enableFeature(google.picker.Feature.NAV_HIDDEN)
-          .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+          .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
+          .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
           .setCallback((data: any) => {
-            if (data.action === google.picker.Action.PICKED) {
+            if (data.action === window.google.picker.Action.PICKED) {
               const files = data.docs.map((doc: any) => ({
                 id: doc.id,
                 name: doc.name,
