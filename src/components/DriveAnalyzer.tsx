@@ -71,86 +71,21 @@ export default function DriveAnalyzer() {
     setDisplayFiles(selectedFiles.slice(0, 100)); // Limit display to first 100 files
   }, [selectedFiles]);
 
-  // Handle picking files from Drive
-  const handlePickFiles = useCallback(() => {
+  // Handle browsing Google Drive and selecting files
+  const handleBrowseDrive = useCallback(() => {
     if (!isReady) {
       toast.error("Google Drive Picker is not ready");
       return;
     }
 
-    openPicker({ pickFolder: false, multiple: true }, (files) => {
+    // Use the enhanced picker that allows folder navigation and file selection
+    openPicker({ multiple: true }, (files) => {
       if (files.length > 0) {
         setSelectedFiles(files);
         toast.success(`Selected ${files.length} file(s)`);
       }
     });
   }, [isReady, openPicker]);
-
-  // Handle picking a folder from Drive
-  const handlePickFolder = useCallback(async () => {
-    if (!isReady) {
-      toast.error("Google Drive Picker is not ready");
-      return;
-    }
-
-    openPicker({ pickFolder: true, multiple: false }, async (folders) => {
-      if (folders.length === 0) return;
-
-      const folder = folders[0];
-      setProcessingStatus({
-        isProcessing: true,
-        currentStep: `Loading files from folder: ${folder.name}...`,
-        progress: 0,
-        totalFiles: 0,
-        processedFiles: 0,
-      });
-
-      try {
-        if (!accessToken) {
-          throw new Error("No access token available");
-        }
-
-        const folderContents = await listFolderContents(folder.id, accessToken);
-
-        // Filter for supported file types
-        const supportedFiles = folderContents.filter(
-          (file) =>
-            file.mimeType === "application/vnd.google-apps.document" ||
-            file.mimeType === "application/vnd.google-apps.spreadsheet" ||
-            file.mimeType === "application/vnd.google-apps.presentation" ||
-            file.mimeType === "application/pdf"
-        );
-
-        // Sort by most recent
-        supportedFiles.sort((a, b) => {
-          return (b.modifiedTime || 0) > (a.modifiedTime || 0) ? 1 : -1;
-        });
-
-        // Limit the number of files
-        const filesToProcess = supportedFiles.slice(0, maxFiles);
-
-        setSelectedFiles(filesToProcess);
-        toast.success(
-          `Loaded ${filesToProcess.length} file(s) from ${folder.name}`
-        );
-      } catch (error) {
-        console.error("Error fetching folder contents:", error);
-        toast.error(
-          `Error loading files from folder: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        );
-      } finally {
-        setProcessingStatus({
-          isProcessing: false,
-          currentStep: "",
-          progress: 0,
-          totalFiles: 0,
-          processedFiles: 0,
-        });
-      }
-    });
-  }, [isReady, openPicker, accessToken, maxFiles]);
 
   // Clear selected files
   const handleClearFiles = useCallback(() => {
@@ -342,22 +277,12 @@ export default function DriveAnalyzer() {
                 {/* File Selection Section */}
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                   <Button
-                    onClick={handlePickFiles}
+                    onClick={handleBrowseDrive}
                     disabled={!isSignedIn || !isReady}
                     className="flex-1"
-                  >
-                    <FileText className="mr-2" />
-                    Select Files
-                  </Button>
-
-                  <Button
-                    onClick={handlePickFolder}
-                    disabled={!isSignedIn || !isReady}
-                    className="flex-1"
-                    variant="secondary"
                   >
                     <FolderOpen className="mr-2" />
-                    Select Folder
+                    Browse Google Drive
                   </Button>
 
                   <Button

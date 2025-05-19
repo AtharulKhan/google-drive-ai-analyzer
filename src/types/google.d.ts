@@ -1,4 +1,3 @@
-
 // Type definitions for Google APIs used in the application
 
 interface Window {
@@ -31,17 +30,17 @@ declare namespace google {
   namespace picker {
     enum Action {
       CANCEL = "cancel",
-      PICKED = "picked"
+      PICKED = "picked",
     }
 
     enum Feature {
       NAV_HIDDEN = "navHidden",
-      MULTISELECT_ENABLED = "multiselectEnabled"
+      MULTISELECT_ENABLED = "multiselectEnabled",
     }
 
     enum ViewId {
       DOCS = "docs",
-      FOLDERS = "folders"
+      FOLDERS = "folders",
     }
 
     class DocsView {
@@ -56,6 +55,7 @@ declare namespace google {
       setOAuthToken(token: string): PickerBuilder;
       enableFeature(feature: Feature): PickerBuilder;
       setCallback(callback: (data: any) => void): PickerBuilder;
+      setTitle(title: string): PickerBuilder;
       build(): any;
       setVisible(visible: boolean): void;
     }

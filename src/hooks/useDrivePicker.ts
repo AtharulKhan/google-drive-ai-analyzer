@@ -1,9 +1,30 @@
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
-import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
+// Types for Google Picker API
+interface GooglePickerDoc {
+  id: string;
+  name: string;
+  mimeType: string;
+  iconUrl?: string;
+  description?: string;
+  parentId?: string;
+  modifiedTime?: number;
+}
+
+interface GooglePickerResponse {
+  action: string;
+  docs: GooglePickerDoc[];
+  viewToken?: string;
+}
 
 // Define the file types we want to support
-export type GoogleFileType = 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'folder';
+export type GoogleFileType =
+  | "document"
+  | "spreadsheet"
+  | "presentation"
+  | "pdf"
+  | "folder";
 
 export interface GoogleFile {
   id: string;
@@ -12,6 +33,7 @@ export interface GoogleFile {
   iconUrl?: string;
   description?: string;
   parentId?: string;
+  modifiedTime?: number;
 }
 
 interface UseDrivePickerOptions {
@@ -19,7 +41,6 @@ interface UseDrivePickerOptions {
 }
 
 interface PickerOptions {
-  pickFolder?: boolean;
   multiple?: boolean;
 }
 
@@ -32,14 +53,14 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
     if (!window.google || pickerApiLoaded) return;
 
     // Create script element to load the Google Picker API
-    const script = document.createElement('script');
-    script.src = 'https://apis.google.com/js/api.js';
+    const script = document.createElement("script");
+    script.src = "https://apis.google.com/js/api.js";
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      window.gapi.load('picker', { callback: () => {
+      window.gapi.load("picker", () => {
         setPickerApiLoaded(true);
-      }});
+      });
     };
     script.onerror = () => {
       toast.error("Failed to load Google Picker API");
@@ -64,7 +85,10 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
 
   // Open the Google Drive Picker
   const openPicker = useCallback(
-    ({ pickFolder = false, multiple = true }: PickerOptions = {}, callback: (files: GoogleFile[]) => void) => {
+    (
+      { multiple = true }: PickerOptions = {},
+      callback: (files: GoogleFile[]) => void
+    ) => {
       if (!pickerInitialized || !accessToken) {
         if (!accessToken) {
           toast.error("Please sign in to access Google Drive");
@@ -75,47 +99,68 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
       }
 
       try {
-        // Create the Picker view depending on what we want to pick (files or folder)
-        let view;
-        if (pickFolder) {
-          view = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
-            .setIncludeFolders(true)
-            .setSelectFolderEnabled(true);
-        } else {
-          view = new window.google.picker.DocsView()
-            .setMimeTypes([
-              'application/vnd.google-apps.document',
-              'application/vnd.google-apps.spreadsheet',
-              'application/vnd.google-apps.presentation',
-              'application/pdf'
-            ].join(','))
-            .setIncludeFolders(false);
-        }
+        // Define the supported MIME types for documents
+        const supportedMimeTypes = [
+          "application/vnd.google-apps.document",
+          "application/vnd.google-apps.spreadsheet",
+          "application/vnd.google-apps.presentation",
+          "application/pdf",
+        ].join(",");
+
+        // Create a view that shows documents with supported mime types
+        const docsView = new window.google.picker.DocsView()
+          .setMimeTypes(supportedMimeTypes)
+          .setIncludeFolders(true)
+          .setSelectFolderEnabled(false); // Don't allow selecting folders, only navigate into them
+
+        // Create a folder view for easier folder navigation
+        const folderView = new window.google.picker.DocsView(
+          window.google.picker.ViewId.FOLDERS
+        )
+          .setIncludeFolders(true)
+          .setSelectFolderEnabled(false);
+
+        // Create a "My Drive" view as the starting point
+        const myDriveView = new window.google.picker.DocsView();
 
         // Build and display the picker
         const picker = new window.google.picker.PickerBuilder()
-          .addView(view)
+          .addView(folderView)
+          .addView(myDriveView)
+          .addView(docsView)
           .setOAuthToken(accessToken)
-          .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
           .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
-          .setCallback((data: any) => {
+          .setTitle("Select Files from Google Drive")
+          .setCallback((data: GooglePickerResponse) => {
             if (data.action === window.google.picker.Action.PICKED) {
-              const files = data.docs.map((doc: any) => ({
-                id: doc.id,
-                name: doc.name,
-                mimeType: doc.mimeType,
-                iconUrl: doc.iconUrl,
-                description: doc.description,
-                parentId: doc.parentId
-              }));
-              callback(files);
+              // Filter out any folders from the selection - we only want files
+              const files = data.docs
+                .filter(
+                  (doc) => doc.mimeType !== "application/vnd.google-apps.folder"
+                )
+                .map((doc) => ({
+                  id: doc.id,
+                  name: doc.name,
+                  mimeType: doc.mimeType,
+                  iconUrl: doc.iconUrl,
+                  description: doc.description,
+                  parentId: doc.parentId,
+                }));
+
+              if (files.length > 0) {
+                callback(files);
+              } else {
+                toast.info(
+                  "No files were selected. Please select one or more documents, spreadsheets, presentations, or PDFs."
+                );
+              }
             }
           })
           .build();
 
         picker.setVisible(true);
       } catch (error) {
-        console.error('Error opening Google Drive Picker:', error);
+        console.error("Error opening Google Drive Picker:", error);
         toast.error("Failed to open Google Drive Picker");
       }
     },
@@ -127,6 +172,6 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
 
   return {
     openPicker,
-    isReady
+    isReady,
   };
 }
