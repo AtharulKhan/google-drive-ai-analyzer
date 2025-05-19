@@ -10,36 +10,55 @@ const SCOPES = [
   'https://www.googleapis.com/auth/presentations.readonly'
 ].join(' ');
 
-// Google OAuth client ID (this should come from env variables in production)
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-
 export interface GoogleAuthState {
   isSignedIn: boolean;
   accessToken: string | null;
   loading: boolean;
   error: string | null;
+  clientId: string;
 }
 
 export function useGoogleAuth() {
+  // Get the client ID from localStorage or default to empty string
+  const savedClientId = localStorage.getItem('googleClientId') || '';
+  
   const [authState, setAuthState] = useState<GoogleAuthState>({
     isSignedIn: false,
     accessToken: null,
-    loading: true,
-    error: null
+    loading: false,
+    error: null,
+    clientId: savedClientId
   });
+
+  // Function to set the client ID
+  const setClientId = useCallback((newClientId: string) => {
+    localStorage.setItem('googleClientId', newClientId);
+    setAuthState(prev => ({ 
+      ...prev, 
+      clientId: newClientId,
+      error: null
+    }));
+    // Reset auth state if client ID changes
+    if (authState.isSignedIn && newClientId !== authState.clientId) {
+      signOut();
+    }
+    toast.success("Google Client ID saved successfully");
+  }, [authState.clientId, authState.isSignedIn]);
 
   // Initialize the Google API client
   const initializeGapi = useCallback(async () => {
-    if (!CLIENT_ID) {
+    if (!authState.clientId) {
       setAuthState(prev => ({ 
         ...prev, 
         loading: false, 
-        error: 'Google Client ID is not set in environment variables' 
+        error: 'Google Client ID is not set. Please add it in Settings.' 
       }));
       return;
     }
 
     try {
+      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      
       // Load the required Google API libraries
       await new Promise<void>((resolve, reject) => {
         // Load Google's client library
@@ -76,43 +95,52 @@ export function useGoogleAuth() {
         error: 'Failed to initialize Google API client' 
       }));
     }
-  }, []);
+  }, [authState.clientId]);
 
   useEffect(() => {
-    initializeGapi();
-  }, [initializeGapi]);
+    if (authState.clientId) {
+      initializeGapi();
+    }
+  }, [initializeGapi, authState.clientId]);
 
   // Sign in with Google
   const signIn = useCallback(async () => {
-    if (!window.google || !CLIENT_ID) {
-      toast.error("Google API client not initialized or Client ID missing");
+    if (!window.google) {
+      toast.error("Google API client not initialized");
+      return;
+    }
+    
+    if (!authState.clientId) {
+      toast.error("Please set a Google Client ID in Settings first");
       return;
     }
 
     try {
-      setAuthState(prev => ({ ...prev, loading: true }));
+      setAuthState(prev => ({ ...prev, loading: true, error: null }));
 
       const client = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
+        client_id: authState.clientId,
         scope: SCOPES,
-        callback: (response) => {
+        callback: (response: any) => {
           if (response.error) {
-            setAuthState({
+            setAuthState(prev => ({
+              ...prev,
               isSignedIn: false,
               accessToken: null,
               loading: false,
               error: response.error
-            });
+            }));
             toast.error(`Authentication failed: ${response.error}`);
             return;
           }
 
-          setAuthState({
+          setAuthState(prev => ({
+            ...prev,
             isSignedIn: true,
             accessToken: response.access_token,
             loading: false,
             error: null
-          });
+          }));
           toast.success("Successfully signed in to Google");
         }
       });
@@ -120,15 +148,16 @@ export function useGoogleAuth() {
       client.requestAccessToken();
     } catch (error) {
       console.error('Error signing in with Google:', error);
-      setAuthState({
+      setAuthState(prev => ({
+        ...prev,
         isSignedIn: false,
         accessToken: null,
         loading: false,
-        error: 'Failed to sign in with Google'
-      });
+        error: error instanceof Error ? error.message : 'Failed to sign in with Google'
+      }));
       toast.error("Failed to sign in with Google");
     }
-  }, []);
+  }, [authState.clientId]);
 
   // Sign out
   const signOut = useCallback(() => {
@@ -139,12 +168,13 @@ export function useGoogleAuth() {
 
     if (authState.accessToken) {
       google.accounts.oauth2.revoke(authState.accessToken, () => {
-        setAuthState({
+        setAuthState(prev => ({
+          ...prev,
           isSignedIn: false,
           accessToken: null,
           loading: false,
           error: null
-        });
+        }));
         toast.info("Signed out from Google");
       });
     }
@@ -153,6 +183,7 @@ export function useGoogleAuth() {
   return {
     ...authState,
     signIn,
-    signOut
+    signOut,
+    setClientId
   };
 }

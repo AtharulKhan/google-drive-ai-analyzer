@@ -3,19 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
-  MapPin, 
-  Sprout, 
-  Package, 
-  Wallet, 
-  BarChart2, 
+  Settings,
+  Cloud,
   Menu, 
   X,
   Sun,
   Moon,
-  ChevronRight,
-  Settings,
-  FileText,
-  Cloud
+  ChevronRight
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -53,15 +47,8 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { title: 'Tableau de bord', path: '/', icon: Home },
     { title: 'Google Drive AI Analyzer', path: '/drive-analyzer', icon: Cloud },
-    { title: 'Parcelles', path: '/parcelles', icon: MapPin },
-    { title: 'Cultures', path: '/cultures', icon: Sprout },
-    { title: 'Inventaire', path: '/inventaire', icon: Package },
-    { title: 'Finances', path: '/finances', icon: Wallet },
-    { title: 'Statistiques', path: '/statistiques', icon: BarChart2 },
-    { title: 'Rapports', path: '/rapports', icon: FileText },
-    { title: 'Paramètres', path: '/parametres', icon: Settings },
+    { title: 'Settings', path: '/settings', icon: Settings },
   ];
 
   const isActive = (path: string) => {
@@ -91,8 +78,8 @@ const Navbar = () => {
       >
         <div className="p-4 border-b border-border flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
-            <Sprout className="h-6 w-6 text-agri-primary" />
-            <span className="text-lg font-bold text-foreground">Agri Dom</span>
+            <Cloud className="h-6 w-6 text-agri-primary" />
+            <span className="text-lg font-bold text-foreground">Drive AI Analyzer</span>
           </Link>
           <button 
             onClick={toggleTheme} 
@@ -131,11 +118,11 @@ const Navbar = () => {
         <div className="p-4 border-t border-border">
           <div className="flex items-center space-x-3 px-3 py-2">
             <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium">AD</span>
+              <span className="text-sm font-medium">GA</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">Utilisateur</p>
-              <p className="text-xs text-muted-foreground truncate">agriculteur@example.com</p>
+              <p className="text-sm font-medium truncate">Google Drive AI</p>
+              <p className="text-xs text-muted-foreground truncate">Document Analyzer</p>
             </div>
           </div>
         </div>
