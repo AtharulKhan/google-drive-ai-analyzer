@@ -7,7 +7,9 @@ import { marked } from 'marked';
  * Converts markdown text to HTML
  */
 export const markdownToHtml = (markdown: string): string => {
-  return marked.parse(markdown);
+  // Use marked.parse synchronously by adding the ! to assert it's not a promise
+  // This is safe because we're using the default synchronous mode of marked
+  return marked.parse(markdown) as string;
 };
 
 /**
