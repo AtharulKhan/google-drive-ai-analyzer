@@ -337,29 +337,108 @@ export async function fetchPdfContent(
 }
 
 /**
- * List files in a Google Drive folder
+ * List files in a Google Drive folder with more robust handling
  */
 export async function listFolderContents(
   folderId: string,
-  accessToken: string
+  accessToken: string,
+  includeSubfolders: boolean = false,
+  maxResults: number = 100
 ): Promise<any[]> {
   try {
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType,iconUrl,description)`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    // First, build the query to find files in the specified folder
+    let query = `'${folderId}' in parents and trashed = false`;
+    
+    // Build query for specific file types we want to retrieve
+    const supportedMimeTypes = [
+      "application/vnd.google-apps.document",
+      "application/vnd.google-apps.spreadsheet",
+      "application/vnd.google-apps.presentation",
+      "application/pdf"
+    ];
+    
+    // Add mime type filters to query
+    const mimeTypesQuery = supportedMimeTypes
+      .map(type => `mimeType='${type}'`)
+      .join(" or ");
+    
+    // Combine folder and mime type queries
+    query = `${query} and (${mimeTypesQuery})`;
+    
+    const url = new URL("https://www.googleapis.com/drive/v3/files");
+    url.searchParams.append("q", query);
+    url.searchParams.append("pageSize", maxResults.toString());
+    url.searchParams.append("fields", "files(id,name,mimeType,iconUrl,description,parents,modifiedTime)");
+    url.searchParams.append("orderBy", "modifiedTime desc"); // Get newest files first
+    
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch folder contents: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.files || [];
+    
+    // Get the files from the primary folder
+    let allFiles = data.files || [];
+    
+    // If we need to include subfolders and have less than maxResults, fetch from subfolders too
+    if (includeSubfolders && allFiles.length < maxResults) {
+      // Find subfolders in the parent folder
+      const subfoldersQuery = `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed = false`;
+      
+      const subfoldersUrl = new URL("https://www.googleapis.com/drive/v3/files");
+      subfoldersUrl.searchParams.append("q", subfoldersQuery);
+      subfoldersUrl.searchParams.append("fields", "files(id,name)");
+      
+      const subfoldersResponse = await fetch(subfoldersUrl.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (subfoldersResponse.ok) {
+        const subfoldersData = await subfoldersResponse.json();
+        const subfolders = subfoldersData.files || [];
+        
+        // Process each subfolder up to a reasonable limit
+        const folderProcessLimit = Math.min(subfolders.length, 5); // Limit to 5 subfolders max
+        
+        for (let i = 0; i < folderProcessLimit && allFiles.length < maxResults; i++) {
+          const subfolder = subfolders[i];
+          try {
+            // Recursively call the same function for each subfolder
+            const subfolderFiles = await listFolderContents(
+              subfolder.id, 
+              accessToken,
+              false, // Don't go deeper than one level
+              maxResults - allFiles.length // Only fetch what we still need
+            );
+            
+            // Add each file with its subfolder info
+            subfolderFiles.forEach(file => {
+              file.subfolderName = subfolder.name; // Add subfolder name for display
+              allFiles.push(file);
+            });
+          } catch (error) {
+            console.error(`Error listing subfolder ${subfolder.name}:`, error);
+            // Continue with other subfolders
+          }
+          
+          // If we've reached the limit, stop processing more subfolders
+          if (allFiles.length >= maxResults) break;
+        }
+      }
+    }
+    
+    // Limit the results to maxResults
+    return allFiles.slice(0, maxResults);
   } catch (error) {
     console.error(`Error listing folder contents ${folderId}:`, error);
     throw error;
