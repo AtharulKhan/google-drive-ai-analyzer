@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, FileTextIcon, FolderIcon } from "lucide-react";
+import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, FileTextIcon, FolderIcon, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker, GoogleFile } from "@/hooks/useDrivePicker";
@@ -125,11 +124,14 @@ export default function DriveAnalyzer() {
       
       try {
         setIsFolderLoading(true);
-        toast.info(`Loading files from folder: ${folder.name}`);
+        toast.info(`Loading files from folder: ${folder.name} (${folder.id})`);
         
+        console.log(`Selected folder: ${folder.name} with ID: ${folder.id}`);
         const folderFiles = await listFilesInFolder(folder.id, includeSubfolders, maxFiles);
         
         if (folderFiles.length > 0) {
+          console.log(`Retrieved ${folderFiles.length} files from folder ${folder.name}`);
+          
           // Merge new files with existing ones, avoiding duplicates by file ID
           const existingFileIds = new Set(selectedFiles.map(file => file.id));
           const newFiles = folderFiles.filter(file => !existingFileIds.has(file.id));
@@ -137,7 +139,8 @@ export default function DriveAnalyzer() {
           setSelectedFiles(prev => [...prev, ...newFiles]);
           toast.success(`Added ${newFiles.length} file(s) from folder "${folder.name}"`);
         } else {
-          toast.info(`No compatible files found in folder "${folder.name}"`);
+          console.log(`No compatible files found in folder "${folder.name}"`);
+          toast.warning(`No compatible files found in folder "${folder.name}". Make sure it contains Google Docs, Sheets, Slides, or PDFs.`);
         }
       } catch (error) {
         console.error("Error processing folder:", error);
@@ -438,10 +441,19 @@ export default function DriveAnalyzer() {
                     <FolderOpen className="mr-2 h-5 w-5 text-blue-500" />
                     <div>
                       <span className="text-sm font-medium">Current Folder:</span>{" "}
-                      <span className="text-sm">{currentFolderName}</span>
+                      <span className="text-sm">{currentFolderName} (ID: {currentFolderId})</span>
                     </div>
                   </div>
                 )}
+
+                {/* Warning for user */}
+                <div className="bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-md mb-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-yellow-800 dark:text-yellow-300">
+                    <p className="font-medium">Important Note on Folder Access:</p>
+                    <p>Only Google Docs, Sheets, Slides, and PDFs can be processed. Make sure your Google account has permission to access the selected folder and its contents.</p>
+                  </div>
+                </div>
 
                 {/* File List Component */}
                 <FileList 

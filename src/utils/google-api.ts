@@ -1,3 +1,4 @@
+
 // Utility functions for interacting with Google APIs
 
 /**
@@ -346,6 +347,9 @@ export async function listFolderContents(
   maxResults: number = 100
 ): Promise<any[]> {
   try {
+    console.log(`Listing folder contents for folder ID: ${folderId}`);
+    console.log(`Include subfolders: ${includeSubfolders}, Max results: ${maxResults}`);
+    
     // First, build the query to find files in the specified folder
     let query = `'${folderId}' in parents and trashed = false`;
     
@@ -370,6 +374,11 @@ export async function listFolderContents(
     url.searchParams.append("pageSize", maxResults.toString());
     url.searchParams.append("fields", "files(id,name,mimeType,iconUrl,description,parents,modifiedTime)");
     url.searchParams.append("orderBy", "modifiedTime desc"); // Get newest files first
+    url.searchParams.append("supportsAllDrives", "true");
+    url.searchParams.append("includeItemsFromAllDrives", "true");
+    
+    console.log(`API Request URL: ${url.toString()}`);
+    console.log(`Query string: ${query}`);
     
     const response = await fetch(url.toString(), {
       headers: {
@@ -378,23 +387,31 @@ export async function listFolderContents(
       },
     });
 
+    console.log(`API Response status: ${response.status}`);
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      throw new Error(`Failed to fetch folder contents: ${response.status}`);
+      console.error(`Error response from Drive API: ${responseText}`);
+      throw new Error(`Failed to fetch folder contents: ${response.status} - ${responseText.substring(0, 200)}`);
     }
-
-    const data = await response.json();
+    
+    const data = JSON.parse(responseText);
+    console.log(`Files found in primary folder: ${data.files ? data.files.length : 0}`);
     
     // Get the files from the primary folder
     let allFiles = data.files || [];
     
     // If we need to include subfolders and have less than maxResults, fetch from subfolders too
     if (includeSubfolders && allFiles.length < maxResults) {
+      console.log(`Looking for subfolders in folder ${folderId}`);
       // Find subfolders in the parent folder
       const subfoldersQuery = `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed = false`;
       
       const subfoldersUrl = new URL("https://www.googleapis.com/drive/v3/files");
       subfoldersUrl.searchParams.append("q", subfoldersQuery);
       subfoldersUrl.searchParams.append("fields", "files(id,name)");
+      subfoldersUrl.searchParams.append("supportsAllDrives", "true");
+      subfoldersUrl.searchParams.append("includeItemsFromAllDrives", "true");
       
       const subfoldersResponse = await fetch(subfoldersUrl.toString(), {
         headers: {
@@ -404,43 +421,56 @@ export async function listFolderContents(
       });
       
       if (subfoldersResponse.ok) {
-        const subfoldersData = await subfoldersResponse.json();
-        const subfolders = subfoldersData.files || [];
-        
-        // Process each subfolder up to a reasonable limit
-        const folderProcessLimit = Math.min(subfolders.length, 5); // Limit to 5 subfolders max
-        
-        for (let i = 0; i < folderProcessLimit && allFiles.length < maxResults; i++) {
-          const subfolder = subfolders[i];
-          try {
-            // Recursively call the same function for each subfolder
-            const subfolderFiles = await listFolderContents(
-              subfolder.id, 
-              accessToken,
-              false, // Don't go deeper than one level
-              maxResults - allFiles.length // Only fetch what we still need
-            );
-            
-            // Add each file with its subfolder info
-            subfolderFiles.forEach(file => {
-              file.subfolderName = subfolder.name; // Add subfolder name for display
-              allFiles.push(file);
-            });
-          } catch (error) {
-            console.error(`Error listing subfolder ${subfolder.name}:`, error);
-            // Continue with other subfolders
-          }
+        const subfoldersText = await subfoldersResponse.text();
+        try {
+          const subfoldersData = JSON.parse(subfoldersText);
+          const subfolders = subfoldersData.files || [];
+          console.log(`Subfolders found: ${subfolders.length}`);
           
-          // If we've reached the limit, stop processing more subfolders
-          if (allFiles.length >= maxResults) break;
+          // Process each subfolder up to a reasonable limit
+          const folderProcessLimit = Math.min(subfolders.length, 5); // Limit to 5 subfolders max
+          
+          for (let i = 0; i < folderProcessLimit && allFiles.length < maxResults; i++) {
+            const subfolder = subfolders[i];
+            try {
+              console.log(`Processing subfolder: ${subfolder.name} (${subfolder.id})`);
+              // Recursively call the same function for each subfolder
+              const subfolderFiles = await listFolderContents(
+                subfolder.id, 
+                accessToken,
+                false, // Don't go deeper than one level
+                maxResults - allFiles.length // Only fetch what we still need
+              );
+              
+              console.log(`Files found in subfolder ${subfolder.name}: ${subfolderFiles.length}`);
+              
+              // Add each file with its subfolder info
+              subfolderFiles.forEach(file => {
+                file.subfolderName = subfolder.name; // Add subfolder name for display
+                allFiles.push(file);
+              });
+            } catch (error) {
+              console.error(`Error listing subfolder ${subfolder.name}:`, error);
+              // Continue with other subfolders
+            }
+            
+            // If we've reached the limit, stop processing more subfolders
+            if (allFiles.length >= maxResults) break;
+          }
+        } catch (parseError) {
+          console.error(`Error parsing subfolder response: ${parseError}`, subfoldersText);
         }
+      } else {
+        console.warn(`Failed to fetch subfolders: ${subfoldersResponse.status}`);
       }
     }
+    
+    console.log(`Total files found (after processing subfolders): ${allFiles.length}`);
     
     // Limit the results to maxResults
     return allFiles.slice(0, maxResults);
   } catch (error) {
-    console.error(`Error listing folder contents ${folderId}:`, error);
+    console.error(`Error listing folder contents for ${folderId}:`, error);
     throw error;
   }
 }
