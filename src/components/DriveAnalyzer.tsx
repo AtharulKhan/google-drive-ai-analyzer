@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -29,18 +40,33 @@ import {
   RefreshCw,
   Settings,
   Copy,
+  Save,
+  X,
+  Plus,
+  Menu,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker, GoogleFile } from "@/hooks/useDrivePicker";
 import { fetchFileContent, listFolderContents } from "@/utils/google-api";
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 
 // Maximum number of characters to process from each file
 const MAX_DOC_CHARS = 200000;
 
 // Maximum number of files to process from a folder
 const DEFAULT_MAX_FILES = 20;
+
+// Local Storage Keys
+const SAVED_PROMPTS_KEY = "drive-analyzer-saved-prompts";
+
+interface SavedPrompt {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: number;
+}
 
 export default function DriveAnalyzer() {
   // State variables
@@ -61,10 +87,23 @@ export default function DriveAnalyzer() {
   });
   const [aiOutput, setAiOutput] = useState("");
   const [activeTab, setActiveTab] = useState("files");
+  const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
+  const [newPromptTitle, setNewPromptTitle] = useState("");
+  const [newPromptContent, setNewPromptContent] = useState("");
+  const [isPromptCommandOpen, setIsPromptCommandOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Hooks
   const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
   const { openPicker, isReady } = useDrivePicker({ accessToken });
+
+  // Load saved prompts from localStorage
+  useEffect(() => {
+    const loadedPrompts = localStorage.getItem(SAVED_PROMPTS_KEY);
+    if (loadedPrompts) {
+      setSavedPrompts(JSON.parse(loadedPrompts));
+    }
+  }, []);
 
   // When selected files change, update display files
   useEffect(() => {
@@ -81,11 +120,20 @@ export default function DriveAnalyzer() {
     // Use the enhanced picker that allows folder navigation and file selection
     openPicker({ multiple: true }, (files) => {
       if (files.length > 0) {
-        setSelectedFiles(files);
-        toast.success(`Selected ${files.length} file(s)`);
+        // Merge new files with existing ones, avoiding duplicates by file ID
+        const existingFileIds = new Set(selectedFiles.map(file => file.id));
+        const newFiles = files.filter(file => !existingFileIds.has(file.id));
+        
+        setSelectedFiles(prev => [...prev, ...newFiles]);
+        toast.success(`Added ${newFiles.length} new file(s)`);
       }
     });
-  }, [isReady, openPicker]);
+  }, [isReady, openPicker, selectedFiles]);
+
+  // Remove individual file
+  const handleRemoveFile = useCallback((fileId: string) => {
+    setSelectedFiles(prev => prev.filter(file => file.id !== fileId));
+  }, []);
 
   // Clear selected files
   const handleClearFiles = useCallback(() => {
@@ -211,6 +259,57 @@ export default function DriveAnalyzer() {
     }
   }, [accessToken, selectedFiles, userPrompt, aiModel]);
 
+  // Handle saving a new prompt
+  const handleSavePrompt = useCallback(() => {
+    if (!newPromptTitle.trim() || !newPromptContent.trim()) {
+      toast.error("Both title and content are required for saving a prompt");
+      return;
+    }
+
+    const newPrompt: SavedPrompt = {
+      id: Date.now().toString(),
+      title: newPromptTitle,
+      content: newPromptContent,
+      createdAt: Date.now(),
+    };
+
+    const updatedPrompts = [...savedPrompts, newPrompt];
+    setSavedPrompts(updatedPrompts);
+    localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(updatedPrompts));
+    
+    // Reset input fields
+    setNewPromptTitle("");
+    setNewPromptContent("");
+    
+    toast.success(`Prompt "${newPromptTitle}" saved successfully`);
+  }, [newPromptTitle, newPromptContent, savedPrompts]);
+
+  // Handle deleting a saved prompt
+  const handleDeletePrompt = useCallback((id: string) => {
+    const updatedPrompts = savedPrompts.filter(prompt => prompt.id !== id);
+    setSavedPrompts(updatedPrompts);
+    localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(updatedPrompts));
+    toast.success("Prompt deleted");
+  }, [savedPrompts]);
+
+  // Handle inserting a prompt into the text area
+  const handleInsertPrompt = useCallback((prompt: SavedPrompt) => {
+    setUserPrompt(prompt.content);
+    setIsPromptCommandOpen(false);
+  }, []);
+
+  // Handle text area input to check for trigger characters
+  const handleTextAreaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setUserPrompt(value);
+    
+    // Check if the last character is @ or /
+    const lastChar = value.charAt(value.length - 1);
+    if (lastChar === '@' || lastChar === '/') {
+      setIsPromptCommandOpen(true);
+    }
+  }, []);
+
   // Debug information
   useEffect(() => {
     console.log("Auth state:", {
@@ -235,6 +334,96 @@ export default function DriveAnalyzer() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Saved Prompts</SheetTitle>
+                    <SheetDescription>
+                      Create and manage your saved prompts for quick access.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-6 space-y-6">
+                    {/* Add new prompt form */}
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Add New Prompt</h3>
+                      <div className="grid gap-2">
+                        <Label htmlFor="promptTitle">Title</Label>
+                        <Input 
+                          id="promptTitle" 
+                          value={newPromptTitle}
+                          onChange={(e) => setNewPromptTitle(e.target.value)} 
+                          placeholder="Enter a title for your prompt"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="promptContent">Content</Label>
+                        <Textarea 
+                          id="promptContent" 
+                          value={newPromptContent}
+                          onChange={(e) => setNewPromptContent(e.target.value)} 
+                          placeholder="Enter the prompt content"
+                          rows={4}
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleSavePrompt} 
+                        className="w-full"
+                        disabled={!newPromptTitle.trim() || !newPromptContent.trim()}
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Prompt
+                      </Button>
+                    </div>
+                    
+                    <Separator />
+                    
+                    {/* Saved prompts list */}
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Your Saved Prompts</h3>
+                      {savedPrompts.length > 0 ? (
+                        <ScrollArea className="h-[200px]">
+                          <div className="space-y-2">
+                            {savedPrompts.map((prompt) => (
+                              <div 
+                                key={prompt.id} 
+                                className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{prompt.title}</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {prompt.content.length > 50
+                                      ? prompt.content.substring(0, 50) + "..."
+                                      : prompt.content}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => handleDeletePrompt(prompt.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      ) : (
+                        <div className="text-center py-4 text-muted-foreground">
+                          No saved prompts yet. Add one above!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+
               <Link to="/settings">
                 <Button variant="outline" size="icon">
                   <Settings className="h-4 w-4" />
@@ -282,7 +471,7 @@ export default function DriveAnalyzer() {
                     className="flex-1"
                   >
                     <FolderOpen className="mr-2" />
-                    Browse Google Drive
+                    Add Files from Google Drive
                   </Button>
 
                   <Button
@@ -292,7 +481,7 @@ export default function DriveAnalyzer() {
                     variant="outline"
                   >
                     <Trash2 className="mr-2" />
-                    Clear Selection
+                    Clear All Files
                   </Button>
                 </div>
 
@@ -313,16 +502,24 @@ export default function DriveAnalyzer() {
                         {displayFiles.map((file) => (
                           <li
                             key={file.id}
-                            className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded"
+                            className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded group"
                           >
-                            <FileText className="h-4 w-4" />
-                            <span className="truncate">{file.name}</span>
+                            <FileText className="h-4 w-4 shrink-0" />
+                            <span className="truncate flex-1">{file.name}</span>
                             <Badge
                               variant="outline"
-                              className="ml-auto text-xs"
+                              className="text-xs ml-2 shrink-0"
                             >
                               {file.mimeType.split(".").pop()}
                             </Badge>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
+                              onClick={() => handleRemoveFile(file.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </li>
                         ))}
                         {selectedFiles.length > displayFiles.length && (
@@ -345,15 +542,38 @@ export default function DriveAnalyzer() {
 
                 {/* Configuration Section */}
                 <div className="grid gap-4">
-                  <div>
+                  <div className="relative">
                     <Label htmlFor="prompt">Prompt (Instructions for AI)</Label>
                     <Textarea
                       id="prompt"
                       value={userPrompt}
-                      onChange={(e) => setUserPrompt(e.target.value)}
+                      onChange={handleTextAreaInput}
                       placeholder="What would you like the AI to do with the selected documents?"
                       rows={3}
+                      ref={textareaRef}
                     />
+                    
+                    {isPromptCommandOpen && (
+                      <div className="absolute left-0 right-0 bottom-full mb-2 z-10">
+                        <Command className="border shadow-md rounded-lg">
+                          <CommandInput placeholder="Search saved prompts..." />
+                          <CommandList>
+                            <CommandEmpty>No saved prompts found</CommandEmpty>
+                            <CommandGroup heading="Saved Prompts">
+                              {savedPrompts.map(prompt => (
+                                <CommandItem 
+                                  key={prompt.id} 
+                                  onSelect={() => handleInsertPrompt(prompt)}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span>{prompt.title}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
