@@ -18,8 +18,9 @@ import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker, GoogleFile } from "@/hooks/useDrivePicker";
 import { fetchFileContent } from "@/utils/google-api";
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
+import { getDefaultAIModel } from "@/utils/ai-models";
 
-// Import our new components
+// Import our components
 import { FileList } from "./drive-analyzer/FileList";
 import { SavedPrompts, SavedPrompt } from "./drive-analyzer/SavedPrompts";
 import { PromptSelector } from "./drive-analyzer/PromptSelector";
@@ -30,6 +31,7 @@ import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
 const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
 const SAVED_PROMPTS_KEY = "drive-analyzer-saved-prompts";
+const CUSTOM_INSTRUCTIONS_KEY = "drive-analyzer-custom-instructions";
 
 export default function DriveAnalyzer() {
   // State variables
@@ -38,9 +40,10 @@ export default function DriveAnalyzer() {
   const [userPrompt, setUserPrompt] = useState(
     "Summarize this content in detail, highlighting key points and insights."
   );
-  const [aiModel, setAiModel] = useState("google/gemini-2.5-flash-preview");
+  const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
   const [maxFiles, setMaxFiles] = useState<number>(DEFAULT_MAX_FILES);
   const [includeSubfolders, setIncludeSubfolders] = useState(true);
+  const [customInstructions, setCustomInstructions] = useState<string>("");
   const [processingStatus, setProcessingStatus] = useState({
     isProcessing: false,
     currentStep: "",
@@ -66,7 +69,20 @@ export default function DriveAnalyzer() {
     if (loadedPrompts) {
       setSavedPrompts(JSON.parse(loadedPrompts));
     }
+    
+    // Load custom instructions
+    const savedInstructions = localStorage.getItem(CUSTOM_INSTRUCTIONS_KEY);
+    if (savedInstructions) {
+      setCustomInstructions(savedInstructions);
+    }
   }, []);
+  
+  // Save custom instructions to localStorage when changed
+  useEffect(() => {
+    if (customInstructions !== undefined) {
+      localStorage.setItem(CUSTOM_INSTRUCTIONS_KEY, customInstructions);
+    }
+  }, [customInstructions]);
 
   // When selected files change, update display files
   useEffect(() => {
@@ -178,8 +194,12 @@ export default function DriveAnalyzer() {
         processedFiles: selectedFiles.length,
       });
 
-      // Call OpenRouter API
-      const result = await analyzeWithOpenRouter(combinedContent, userPrompt, {
+      // Call OpenRouter API with custom instructions if provided
+      const finalPrompt = customInstructions 
+        ? `${customInstructions}\n\n${userPrompt}`
+        : userPrompt;
+        
+      const result = await analyzeWithOpenRouter(combinedContent, finalPrompt, {
         model: aiModel,
       });
 
@@ -220,7 +240,7 @@ export default function DriveAnalyzer() {
         processedFiles: 0,
       });
     }
-  }, [accessToken, selectedFiles, userPrompt, aiModel]);
+  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel]);
 
   // Handle saving a new prompt
   const handleSavePrompt = useCallback(() => {
@@ -389,6 +409,8 @@ export default function DriveAnalyzer() {
                     includeSubfolders={includeSubfolders}
                     setIncludeSubfolders={setIncludeSubfolders}
                     maxDocChars={MAX_DOC_CHARS}
+                    customInstructions={customInstructions}
+                    setCustomInstructions={setCustomInstructions}
                   />
                 </div>
               </div>
