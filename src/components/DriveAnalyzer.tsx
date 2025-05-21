@@ -10,63 +10,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Check,
-  Loader2,
-  FileText,
-  FolderOpen,
-  Trash2,
-  RefreshCw,
-  Settings,
-  Copy,
-  Save,
-  X,
-  Plus,
-  Menu,
-} from "lucide-react";
+import { FolderOpen, Loader2, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker, GoogleFile } from "@/hooks/useDrivePicker";
-import { fetchFileContent, listFolderContents } from "@/utils/google-api";
+import { fetchFileContent } from "@/utils/google-api";
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 
-// Maximum number of characters to process from each file
+// Import our new components
+import { FileList } from "./drive-analyzer/FileList";
+import { SavedPrompts, SavedPrompt } from "./drive-analyzer/SavedPrompts";
+import { PromptSelector } from "./drive-analyzer/PromptSelector";
+import { AnalysisResults } from "./drive-analyzer/AnalysisResults";
+import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
+
+// Constants moved from the original component
 const MAX_DOC_CHARS = 200000;
-
-// Maximum number of files to process from a folder
 const DEFAULT_MAX_FILES = 20;
-
-// Local Storage Keys
 const SAVED_PROMPTS_KEY = "drive-analyzer-saved-prompts";
-
-interface SavedPrompt {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: number;
-}
 
 export default function DriveAnalyzer() {
   // State variables
@@ -310,16 +273,6 @@ export default function DriveAnalyzer() {
     }
   }, []);
 
-  // Debug information
-  useEffect(() => {
-    console.log("Auth state:", {
-      isSignedIn,
-      accessToken: !!accessToken,
-      loading,
-    });
-    console.log("Picker ready:", isReady);
-  }, [isSignedIn, accessToken, loading, isReady]);
-
   return (
     <div className="container mx-auto p-4 max-w-6xl">
       <Card className="w-full shadow-lg">
@@ -334,96 +287,16 @@ export default function DriveAnalyzer() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Saved Prompts</SheetTitle>
-                    <SheetDescription>
-                      Create and manage your saved prompts for quick access.
-                    </SheetDescription>
-                  </SheetHeader>
-                  <div className="mt-6 space-y-6">
-                    {/* Add new prompt form */}
-                    <div className="space-y-4">
-                      <h3 className="font-medium">Add New Prompt</h3>
-                      <div className="grid gap-2">
-                        <Label htmlFor="promptTitle">Title</Label>
-                        <Input 
-                          id="promptTitle" 
-                          value={newPromptTitle}
-                          onChange={(e) => setNewPromptTitle(e.target.value)} 
-                          placeholder="Enter a title for your prompt"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="promptContent">Content</Label>
-                        <Textarea 
-                          id="promptContent" 
-                          value={newPromptContent}
-                          onChange={(e) => setNewPromptContent(e.target.value)} 
-                          placeholder="Enter the prompt content"
-                          rows={4}
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleSavePrompt} 
-                        className="w-full"
-                        disabled={!newPromptTitle.trim() || !newPromptContent.trim()}
-                      >
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Prompt
-                      </Button>
-                    </div>
-                    
-                    <Separator />
-                    
-                    {/* Saved prompts list */}
-                    <div className="space-y-4">
-                      <h3 className="font-medium">Your Saved Prompts</h3>
-                      {savedPrompts.length > 0 ? (
-                        <ScrollArea className="h-[200px]">
-                          <div className="space-y-2">
-                            {savedPrompts.map((prompt) => (
-                              <div 
-                                key={prompt.id} 
-                                className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{prompt.title}</p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {prompt.content.length > 50
-                                      ? prompt.content.substring(0, 50) + "..."
-                                      : prompt.content}
-                                  </p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => handleDeletePrompt(prompt.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      ) : (
-                        <div className="text-center py-4 text-muted-foreground">
-                          No saved prompts yet. Add one above!
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
-
+              {/* Saved Prompts Sheet */}
+              <SavedPrompts
+                savedPrompts={savedPrompts}
+                newPromptTitle={newPromptTitle}
+                setNewPromptTitle={setNewPromptTitle}
+                newPromptContent={newPromptContent}
+                setNewPromptContent={setNewPromptContent}
+                onSavePrompt={handleSavePrompt}
+                onDeletePrompt={handleDeletePrompt}
+              />
               <Link to="/settings">
                 <Button variant="outline" size="icon">
                   <Settings className="h-4 w-4" />
@@ -446,7 +319,7 @@ export default function DriveAnalyzer() {
                 >
                   <span className="hidden sm:inline mr-2">Sign Out</span>
                   <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   </div>
                 </Button>
               )}
@@ -485,196 +358,48 @@ export default function DriveAnalyzer() {
                   </Button>
                 </div>
 
-                {/* Selected Files List */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-medium">Selected Files</h3>
-                    <Badge
-                      variant={selectedFiles.length > 0 ? "default" : "outline"}
-                    >
-                      {selectedFiles.length} file(s)
-                    </Badge>
-                  </div>
-
-                  {selectedFiles.length > 0 ? (
-                    <ScrollArea className="h-48 border rounded-md p-2">
-                      <ul className="space-y-1">
-                        {displayFiles.map((file) => (
-                          <li
-                            key={file.id}
-                            className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded group"
-                          >
-                            <FileText className="h-4 w-4 shrink-0" />
-                            <span className="truncate flex-1">{file.name}</span>
-                            <Badge
-                              variant="outline"
-                              className="text-xs ml-2 shrink-0"
-                            >
-                              {file.mimeType.split(".").pop()}
-                            </Badge>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
-                              onClick={() => handleRemoveFile(file.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </li>
-                        ))}
-                        {selectedFiles.length > displayFiles.length && (
-                          <li className="text-center text-sm text-muted-foreground pt-2">
-                            + {selectedFiles.length - displayFiles.length} more
-                            files
-                          </li>
-                        )}
-                      </ul>
-                    </ScrollArea>
-                  ) : (
-                    <div className="h-48 border rounded-md flex items-center justify-center text-muted-foreground">
-                      No files selected. Use the buttons above to select files
-                      or a folder.
-                    </div>
-                  )}
-                </div>
+                {/* File List Component */}
+                <FileList 
+                  selectedFiles={selectedFiles}
+                  displayFiles={displayFiles}
+                  onRemoveFile={handleRemoveFile}
+                  onClearFiles={handleClearFiles}
+                />
 
                 <Separator />
 
                 {/* Configuration Section */}
                 <div className="grid gap-4">
-                  <div className="relative">
-                    <Label htmlFor="prompt">Prompt (Instructions for AI)</Label>
-                    <Textarea
-                      id="prompt"
-                      value={userPrompt}
-                      onChange={handleTextAreaInput}
-                      placeholder="What would you like the AI to do with the selected documents?"
-                      rows={3}
-                      ref={textareaRef}
-                    />
-                    
-                    {isPromptCommandOpen && (
-                      <div className="absolute left-0 right-0 bottom-full mb-2 z-10">
-                        <Command className="border shadow-md rounded-lg">
-                          <CommandInput placeholder="Search saved prompts..." />
-                          <CommandList>
-                            <CommandEmpty>No saved prompts found</CommandEmpty>
-                            <CommandGroup heading="Saved Prompts">
-                              {savedPrompts.map(prompt => (
-                                <CommandItem 
-                                  key={prompt.id} 
-                                  onSelect={() => handleInsertPrompt(prompt)}
-                                  className="flex items-center justify-between"
-                                >
-                                  <span>{prompt.title}</span>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </div>
-                    )}
-                  </div>
+                  {/* Prompt Selector Component */}
+                  <PromptSelector
+                    userPrompt={userPrompt}
+                    onUserPromptChange={handleTextAreaInput}
+                    isPromptCommandOpen={isPromptCommandOpen}
+                    savedPrompts={savedPrompts}
+                    onInsertPrompt={handleInsertPrompt}
+                    textareaRef={textareaRef}
+                  />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="model">AI Model</Label>
-                      <Input
-                        id="model"
-                        value={aiModel}
-                        onChange={(e) => setAiModel(e.target.value)}
-                        placeholder="OpenRouter model"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="maxFiles">
-                        Max Files (for folder selection)
-                      </Label>
-                      <Input
-                        id="maxFiles"
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={maxFiles}
-                        onChange={(e) => setMaxFiles(Number(e.target.value))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="includeSubfolders"
-                      checked={includeSubfolders}
-                      onCheckedChange={(checked) =>
-                        setIncludeSubfolders(!!checked)
-                      }
-                    />
-                    <Label htmlFor="includeSubfolders">
-                      Include Subfolders (when selecting folder)
-                    </Label>
-                  </div>
+                  {/* Configuration Options Component */}
+                  <ConfigurationOptions
+                    aiModel={aiModel}
+                    setAiModel={setAiModel}
+                    maxFiles={maxFiles}
+                    setMaxFiles={setMaxFiles}
+                    includeSubfolders={includeSubfolders}
+                    setIncludeSubfolders={setIncludeSubfolders}
+                    maxDocChars={MAX_DOC_CHARS}
+                  />
                 </div>
-
-                <Alert variant="default" className="bg-muted/50">
-                  <AlertTitle>Processing Information</AlertTitle>
-                  <AlertDescription>
-                    Files will be processed up to{" "}
-                    {MAX_DOC_CHARS.toLocaleString()} characters each. When
-                    selecting a folder, up to {maxFiles} most recent files will
-                    be processed.
-                  </AlertDescription>
-                </Alert>
               </div>
             </TabsContent>
 
             <TabsContent value="result">
-              <div className="space-y-4">
-                {processingStatus.isProcessing && (
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between">
-                      <span>{processingStatus.currentStep}</span>
-                      <span>
-                        {processingStatus.processedFiles} /{" "}
-                        {processingStatus.totalFiles} files
-                      </span>
-                    </div>
-                    <Progress value={processingStatus.progress} />
-                  </div>
-                )}
-
-                {aiOutput ? (
-                  <div className="relative">
-                    <Button
-                      className="absolute top-2 right-2 z-10"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(aiOutput);
-                        toast.success("Results copied to clipboard");
-                      }}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy
-                    </Button>
-                    <ScrollArea className="border rounded-md p-4 h-[500px]">
-                      <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
-                        {aiOutput.split("\n").map((line, i) => (
-                          <React.Fragment key={i}>
-                            {line}
-                            <br />
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                ) : (
-                  <div className="h-[500px] border rounded-md flex items-center justify-center text-muted-foreground">
-                    {processingStatus.isProcessing
-                      ? "Processing... Please wait."
-                      : "No analysis results yet. Select files and run analysis."}
-                  </div>
-                )}
-              </div>
+              {/* Analysis Results Component */}
+              <AnalysisResults 
+                processingStatus={processingStatus}
+                aiOutput={aiOutput}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
