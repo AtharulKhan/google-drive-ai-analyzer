@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, FileTextIcon, FolderIcon, AlertTriangle } from "lucide-react";
+import { FolderOpen, Loader2, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker, GoogleFile } from "@/hooks/useDrivePicker";
@@ -57,13 +58,10 @@ export default function DriveAnalyzer() {
   const [newPromptContent, setNewPromptContent] = useState("");
   const [isPromptCommandOpen, setIsPromptCommandOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
-  const [isFolderLoading, setIsFolderLoading] = useState(false);
 
   // Hooks
   const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
-  const { openPicker, openFolderPicker, listFilesInFolder, isReady } = useDrivePicker({ accessToken });
+  const { openPicker, isReady } = useDrivePicker({ accessToken });
 
   // Load saved prompts from localStorage
   useEffect(() => {
@@ -99,7 +97,7 @@ export default function DriveAnalyzer() {
     }
 
     // Use the enhanced picker that allows folder navigation and file selection
-    openPicker({ multiple: true, selectFolders: false }, (files) => {
+    openPicker({ multiple: true }, (files) => {
       if (files.length > 0) {
         // Merge new files with existing ones, avoiding duplicates by file ID
         const existingFileIds = new Set(selectedFiles.map(file => file.id));
@@ -111,46 +109,6 @@ export default function DriveAnalyzer() {
     });
   }, [isReady, openPicker, selectedFiles]);
 
-  // Handle selecting a folder
-  const handleSelectFolder = useCallback(async () => {
-    if (!isReady) {
-      toast.error("Google Drive Picker is not ready");
-      return;
-    }
-
-    openFolderPicker(async (folder) => {
-      setCurrentFolderId(folder.id);
-      setCurrentFolderName(folder.name);
-      
-      try {
-        setIsFolderLoading(true);
-        toast.info(`Loading files from folder: ${folder.name} (${folder.id})`);
-        
-        console.log(`Selected folder: ${folder.name} with ID: ${folder.id}`);
-        const folderFiles = await listFilesInFolder(folder.id, includeSubfolders, maxFiles);
-        
-        if (folderFiles.length > 0) {
-          console.log(`Retrieved ${folderFiles.length} files from folder ${folder.name}`);
-          
-          // Merge new files with existing ones, avoiding duplicates by file ID
-          const existingFileIds = new Set(selectedFiles.map(file => file.id));
-          const newFiles = folderFiles.filter(file => !existingFileIds.has(file.id));
-          
-          setSelectedFiles(prev => [...prev, ...newFiles]);
-          toast.success(`Added ${newFiles.length} file(s) from folder "${folder.name}"`);
-        } else {
-          console.log(`No compatible files found in folder "${folder.name}"`);
-          toast.warning(`No compatible files found in folder "${folder.name}". Make sure it contains Google Docs, Sheets, Slides, or PDFs.`);
-        }
-      } catch (error) {
-        console.error("Error processing folder:", error);
-        toast.error(`Error loading folder content: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
-        setIsFolderLoading(false);
-      }
-    });
-  }, [isReady, openFolderPicker, listFilesInFolder, includeSubfolders, maxFiles, selectedFiles]);
-
   // Remove individual file
   const handleRemoveFile = useCallback((fileId: string) => {
     setSelectedFiles(prev => prev.filter(file => file.id !== fileId));
@@ -160,8 +118,6 @@ export default function DriveAnalyzer() {
   const handleClearFiles = useCallback(() => {
     setSelectedFiles([]);
     setDisplayFiles([]);
-    setCurrentFolderId(null);
-    setCurrentFolderName(null);
   }, []);
 
   // Process files and send to OpenRouter for analysis
@@ -407,21 +363,8 @@ export default function DriveAnalyzer() {
                     disabled={!isSignedIn || !isReady}
                     className="flex-1"
                   >
-                    <FileTextIcon className="mr-2" />
-                    Add Files from Drive
-                  </Button>
-
-                  <Button
-                    onClick={handleSelectFolder}
-                    disabled={!isSignedIn || !isReady || isFolderLoading}
-                    className="flex-1"
-                  >
-                    {isFolderLoading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <FolderIcon className="mr-2" />
-                    )}
-                    {isFolderLoading ? "Loading Folder..." : "Select Folder"}
+                    <FolderOpen className="mr-2" />
+                    Add Files from Google Drive
                   </Button>
 
                   <Button
@@ -433,26 +376,6 @@ export default function DriveAnalyzer() {
                     <Trash2 className="mr-2" />
                     Clear All Files
                   </Button>
-                </div>
-
-                {/* Current Folder Display */}
-                {currentFolderName && (
-                  <div className="bg-muted/30 p-3 rounded-md mb-4 flex items-center">
-                    <FolderOpen className="mr-2 h-5 w-5 text-blue-500" />
-                    <div>
-                      <span className="text-sm font-medium">Current Folder:</span>{" "}
-                      <span className="text-sm">{currentFolderName} (ID: {currentFolderId})</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Warning for user */}
-                <div className="bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-md mb-4 flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-yellow-800 dark:text-yellow-300">
-                    <p className="font-medium">Important Note on Folder Access:</p>
-                    <p>Only Google Docs, Sheets, Slides, and PDFs can be processed. Make sure your Google account has permission to access the selected folder and its contents.</p>
-                  </div>
                 </div>
 
                 {/* File List Component */}

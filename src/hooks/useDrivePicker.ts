@@ -1,7 +1,5 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { listFolderContents } from "@/utils/google-api";
 
 // Types for Google Picker API
 interface GooglePickerDoc {
@@ -44,7 +42,6 @@ interface UseDrivePickerOptions {
 
 interface PickerOptions {
   multiple?: boolean;
-  selectFolders?: boolean;
 }
 
 export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
@@ -86,10 +83,10 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
     }
   }, [accessToken, pickerApiLoaded, pickerInitialized]);
 
-  // Open the Google Drive Picker for files
+  // Open the Google Drive Picker
   const openPicker = useCallback(
     (
-      { multiple = true, selectFolders = false }: PickerOptions = {},
+      { multiple = true }: PickerOptions = {},
       callback: (files: GoogleFile[]) => void
     ) => {
       if (!pickerInitialized || !accessToken) {
@@ -114,63 +111,29 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
         const docsView = new window.google.picker.DocsView()
           .setMimeTypes(supportedMimeTypes)
           .setIncludeFolders(true)
-          .setSelectFolderEnabled(false); // Don't allow selecting folders in this view
+          .setSelectFolderEnabled(false); // Don't allow selecting folders, only navigate into them
 
-        // Create a dedicated folder view for selecting folders
+        // Create a folder view for easier folder navigation
         const folderView = new window.google.picker.DocsView(
           window.google.picker.ViewId.FOLDERS
         )
           .setIncludeFolders(true)
-          .setSelectFolderEnabled(true); // Always enable folder selection in folder view
+          .setSelectFolderEnabled(false);
 
         // Create a "My Drive" view as the starting point
         const myDriveView = new window.google.picker.DocsView();
 
         // Build and display the picker
         const picker = new window.google.picker.PickerBuilder()
+          .addView(folderView)
+          .addView(myDriveView)
+          .addView(docsView)
           .setOAuthToken(accessToken)
           .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
-          .setTitle(selectFolders ? "Select a Folder" : "Select Files from Google Drive");
-          
-        // If selecting folders, only show the folder view and My Drive
-        if (selectFolders) {
-          picker.addView(folderView);
-          picker.addView(myDriveView);
-        } else {
-          // If selecting files, show all views
-          picker.addView(myDriveView);
-          picker.addView(docsView);
-          picker.addView(folderView);
-        }
-        
-        picker.setCallback((data: GooglePickerResponse) => {
-          if (data.action === window.google.picker.Action.PICKED) {
-            if (selectFolders) {
-              // Handle folder selection
-              const folders = data.docs.filter(
-                (doc) => doc.mimeType === "application/vnd.google-apps.folder"
-              );
-              
-              if (folders.length > 0) {
-                const folder = folders[0]; // Select the first folder if multiple were somehow selected
-                toast.info(`Selected folder: ${folder.name} (${folder.id})`);
-                
-                // Convert to our GoogleFile format
-                const folderFile: GoogleFile = {
-                  id: folder.id,
-                  name: folder.name,
-                  mimeType: folder.mimeType,
-                  iconUrl: folder.iconUrl,
-                  description: folder.description,
-                  parentId: folder.parentId,
-                };
-                
-                callback([folderFile]);
-              } else {
-                toast.info("No folder was selected. Please select a folder.");
-              }
-            } else {
-              // Filter out any folders from the selection - we only want files when not in folder selection mode
+          .setTitle("Select Files from Google Drive")
+          .setCallback((data: GooglePickerResponse) => {
+            if (data.action === window.google.picker.Action.PICKED) {
+              // Filter out any folders from the selection - we only want files
               const files = data.docs
                 .filter(
                   (doc) => doc.mimeType !== "application/vnd.google-apps.folder"
@@ -192,9 +155,8 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
                 );
               }
             }
-          }
-        })
-        .build();
+          })
+          .build();
 
         picker.setVisible(true);
       } catch (error) {
@@ -204,62 +166,12 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
     },
     [pickerInitialized, accessToken]
   );
-  
-  // Function to specifically open a folder picker
-  const openFolderPicker = useCallback(
-    (callback: (folder: GoogleFile) => void) => {
-      openPicker({ multiple: false, selectFolders: true }, (files) => {
-        if (files.length > 0 && files[0].mimeType === "application/vnd.google-apps.folder") {
-          callback(files[0]);
-        }
-      });
-    },
-    [openPicker]
-  );
-  
-  // Function to list files in a folder
-  const listFilesInFolder = useCallback(
-    async (folderId: string, includeSubfolders: boolean = false, maxFiles: number = 20) => {
-      if (!accessToken) {
-        toast.error("Please sign in to access Google Drive");
-        return [];
-      }
-      
-      try {
-        console.log(`Requesting files from folder ID: ${folderId}`);
-        console.log(`Include subfolders: ${includeSubfolders}, Max files: ${maxFiles}`);
-        
-        const files = await listFolderContents(folderId, accessToken, includeSubfolders, maxFiles);
-        console.log(`Retrieved ${files.length} files from folder`);
-        
-        // Filter to only the supported file types
-        const supportedFiles = files.filter(file => 
-          file.mimeType === "application/vnd.google-apps.document" ||
-          file.mimeType === "application/vnd.google-apps.spreadsheet" ||
-          file.mimeType === "application/vnd.google-apps.presentation" ||
-          file.mimeType === "application/pdf"
-        );
-        
-        console.log(`After filtering, ${supportedFiles.length} supported files found`);
-        
-        // Limit to max number of files and return
-        return supportedFiles.slice(0, maxFiles);
-      } catch (error) {
-        console.error("Error listing folder contents:", error);
-        toast.error(`Failed to list folder contents: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        return [];
-      }
-    },
-    [accessToken]
-  );
 
   // Check if the picker is ready to use
   const isReady = pickerInitialized && !!accessToken;
 
   return {
     openPicker,
-    openFolderPicker,
-    listFilesInFolder,
     isReady,
   };
 }

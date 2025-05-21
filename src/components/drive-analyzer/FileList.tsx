@@ -3,7 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { FileText, X, FolderIcon } from "lucide-react";
+import { FileText, X } from "lucide-react";
 import { GoogleFile } from "@/hooks/useDrivePicker";
 
 interface FileListProps {
@@ -19,34 +19,12 @@ export function FileList({
   onRemoveFile,
   onClearFiles
 }: FileListProps) {
-  // Helper function to get icon for file type
-  const getFileIcon = (mimeType: string) => {
-    if (mimeType === "application/vnd.google-apps.folder") {
-      return <FolderIcon className="h-4 w-4 shrink-0" />;
-    }
-    return <FileText className="h-4 w-4 shrink-0" />;
-  };
-
-  // Helper function to get display name for file type
-  const getFileTypeDisplay = (mimeType: string) => {
-    switch (mimeType) {
-      case "application/vnd.google-apps.document":
-        return "Doc";
-      case "application/vnd.google-apps.spreadsheet":
-        return "Sheet";
-      case "application/vnd.google-apps.presentation":
-        return "Slides";
-      case "application/pdf":
-        return "PDF";
-      case "application/vnd.google-apps.folder":
-        return "Folder";
-      default:
-        return mimeType.split(".").pop() || "File";
-    }
-  };
-
   return (
     <div>
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        {/* File action buttons are in the parent component */}
+      </div>
+
       {/* Selected Files List */}
       <div>
         <div className="flex justify-between items-center mb-2">
@@ -66,13 +44,13 @@ export function FileList({
                   key={file.id}
                   className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded group"
                 >
-                  {getFileIcon(file.mimeType)}
+                  <FileText className="h-4 w-4 shrink-0" />
                   <span className="truncate flex-1">{file.name}</span>
                   <Badge
                     variant="outline"
                     className="text-xs ml-2 shrink-0"
                   >
-                    {getFileTypeDisplay(file.mimeType)}
+                    {file.mimeType.split(".").pop()}
                   </Badge>
                   <Button 
                     variant="ghost" 
