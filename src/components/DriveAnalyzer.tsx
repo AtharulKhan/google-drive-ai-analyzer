@@ -574,27 +574,6 @@ export default function DriveAnalyzer() {
                 />
 
                 <Separator className="my-6" />
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Text & URL Inputs</CardTitle>
-                    <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <TextUrlInput
-                      pastedText={pastedText}
-                      onPastedTextChange={handlePastedTextChange}
-                      urls={urls}
-                      onUrlAdd={handleAddUrl}
-                      onUrlRemove={handleRemoveUrl}
-                      onClearPastedText={handleClearPastedText}
-                      onClearUrls={handleClearUrls}
-                      currentUrlInput={currentUrlInput}
-                      onCurrentUrlInputChange={handleCurrentUrlInputChange}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Separator />
 
                 {/* Configuration Section */}
                 <div className="grid gap-4">
@@ -621,6 +600,29 @@ export default function DriveAnalyzer() {
                     setCustomInstructions={setCustomInstructions}
                   />
                 </div>
+                
+                <Separator className="my-6" /> 
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Text & URL Inputs</CardTitle>
+                    <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <TextUrlInput
+                      pastedText={pastedText}
+                      onPastedTextChange={handlePastedTextChange}
+                      urls={urls}
+                      onUrlAdd={handleAddUrl}
+                      onUrlRemove={handleRemoveUrl}
+                      onClearPastedText={handleClearPastedText}
+                      onClearUrls={handleClearUrls}
+                      currentUrlInput={currentUrlInput}
+                      onCurrentUrlInputChange={handleCurrentUrlInputChange}
+                    />
+                  </CardContent>
+                </Card>
+
               </div>
             </TabsContent>
 
