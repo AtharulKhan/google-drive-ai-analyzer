@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -463,7 +462,6 @@ export default function DriveAnalyzer() {
     // toast.info(`Viewing analysis: ${analysis.title}`); 
   }, []);
 
-
   // Handle text area input to check for trigger characters
   const handleTextAreaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -477,19 +475,19 @@ export default function DriveAnalyzer() {
   }, []);
 
   return (
-    <div className="container mx-auto p-4 max-w-6xl">
+    <div className="container mx-auto px-2 sm:px-4 max-w-6xl">
       <Card className="w-full shadow-lg">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="px-3 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <CardTitle className="text-2xl">
+              <CardTitle className="text-xl sm:text-2xl">
                 Google Drive AI Analyzer
               </CardTitle>
-              <CardDescription>
-                Select documents from Google Drive and analyze them with AI
+              <CardDescription className="text-sm">
+                Analyze documents from Drive, URLs, or text with AI
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-2 sm:mt-0">
               {/* Saved Prompts Sheet */}
               <SavedPrompts
                 savedPrompts={savedPrompts}
@@ -515,7 +513,7 @@ export default function DriveAnalyzer() {
                   onClick={signIn}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  Sign in with Google
+                  Sign in
                 </Button>
               )}
               {isSignedIn && (
@@ -534,7 +532,7 @@ export default function DriveAnalyzer() {
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="px-3 sm:px-6 py-4">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-2 mb-4">
               <TabsTrigger value="files">Files & Settings</TabsTrigger>
@@ -542,16 +540,16 @@ export default function DriveAnalyzer() {
             </TabsList>
 
             <TabsContent value="files">
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* File Selection Section */}
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                   <Button
                     onClick={handleBrowseDrive}
                     disabled={!isSignedIn || !isReady}
                     className="flex-1"
                   >
-                    <FolderOpen className="mr-2" />
-                    Add Files from Google Drive
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Add from Drive
                   </Button>
 
                   <Button
@@ -560,8 +558,8 @@ export default function DriveAnalyzer() {
                     className="flex-1"
                     variant="outline"
                   >
-                    <Trash2 className="mr-2" />
-                    Clear All Files
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear Files
                   </Button>
                 </div>
 
@@ -573,7 +571,7 @@ export default function DriveAnalyzer() {
                   onClearFiles={handleClearFiles}
                 />
 
-                <Separator className="my-6" />
+                <Separator className="my-4" />
 
                 {/* Configuration Section */}
                 <div className="grid gap-4">
@@ -601,28 +599,21 @@ export default function DriveAnalyzer() {
                   />
                 </div>
                 
-                <Separator className="my-6" /> 
+                <Separator className="my-4" /> 
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Text & URL Inputs</CardTitle>
-                    <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <TextUrlInput
-                      pastedText={pastedText}
-                      onPastedTextChange={handlePastedTextChange}
-                      urls={urls}
-                      onUrlAdd={handleAddUrl}
-                      onUrlRemove={handleRemoveUrl}
-                      onClearPastedText={handleClearPastedText}
-                      onClearUrls={handleClearUrls}
-                      currentUrlInput={currentUrlInput}
-                      onCurrentUrlInputChange={handleCurrentUrlInputChange}
-                    />
-                  </CardContent>
-                </Card>
-
+                <div className="space-y-2 sm:space-y-4">
+                  <TextUrlInput
+                    pastedText={pastedText}
+                    onPastedTextChange={handlePastedTextChange}
+                    urls={urls}
+                    onUrlAdd={handleAddUrl}
+                    onUrlRemove={handleRemoveUrl}
+                    onClearPastedText={handleClearPastedText}
+                    onClearUrls={handleClearUrls}
+                    currentUrlInput={currentUrlInput}
+                    onCurrentUrlInputChange={handleCurrentUrlInputChange}
+                  />
+                </div>
               </div>
             </TabsContent>
 
@@ -636,7 +627,7 @@ export default function DriveAnalyzer() {
           </Tabs>
         </CardContent>
 
-        <CardFooter className="flex flex-col sm:flex-row gap-4 justify-end border-t p-4">
+        <CardFooter className="flex flex-col sm:flex-row gap-2 justify-end border-t p-3 sm:p-4">
           <Button
             onClick={handleRunAnalysis}
             disabled={
@@ -681,11 +672,11 @@ export default function DriveAnalyzer() {
             }
           }}
         >
-          <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col p-3 sm:p-6">
             <DialogHeader>
               <DialogTitle>{viewingAnalysis.title}</DialogTitle>
             </DialogHeader>
-            <div className="overflow-y-auto flex-grow pr-6">
+            <div className="overflow-y-auto flex-grow pr-2 sm:pr-6">
               <SavedAnalysisDetailView analysis={viewingAnalysis} />
             </div>
             <DialogFooter className="mt-auto pt-4">

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,10 +49,10 @@ export function TextUrlInput({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Content Input</CardTitle>
+      <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+        <CardTitle className="text-lg">Content Input</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="px-3 sm:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6">
         {/* Pasted Text Section */}
         <div className="space-y-2">
           <Label htmlFor="pasted-text">Pasted Text</Label>
@@ -60,12 +61,12 @@ export function TextUrlInput({
             placeholder="Paste your text here..."
             value={pastedText}
             onChange={handlePastedTextChange}
-            rows={8}
+            rows={6}
             className="resize-none"
           />
           {pastedText && (
             <Button variant="outline" size="sm" onClick={onClearPastedText} className="mt-2">
-              Clear Pasted Text
+              Clear Text
             </Button>
           )}
         </div>
@@ -85,22 +86,23 @@ export function TextUrlInput({
                   handleAddUrl();
                 }
               }}
+              className="text-xs sm:text-sm"
             />
-            <Button onClick={handleAddUrl}>Add URL</Button>
+            <Button onClick={handleAddUrl} size="sm" className="whitespace-nowrap">Add URL</Button>
           </div>
 
           {urls.length > 0 && (
             <div className="space-y-2 pt-2">
               <Label>Added URLs:</Label>
-              <ScrollArea className="h-40 w-full rounded-md border p-2">
+              <ScrollArea className="h-32 w-full rounded-md border p-2">
                 <div className="space-y-2">
                   {urls.map((url, index) => (
-                    <Badge key={index} variant="secondary" className="flex justify-between items-center">
-                      <span className="truncate mr-2" title={url}>{url}</span>
+                    <Badge key={index} variant="secondary" className="flex justify-between items-center text-xs sm:text-sm max-w-full">
+                      <span className="truncate mr-2 max-w-[calc(100%-24px)]" title={url}>{url}</span>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-5 w-5"
+                        className="h-5 w-5 flex-shrink-0"
                         onClick={() => onUrlRemove(index)}
                       >
                         <X className="h-3 w-3" />
