@@ -26,13 +26,6 @@ export interface SavedAnalysis {
   sources: SavedAnalysisSource[];
 }
 
-export interface SavedAnalysisContentSource {
-  id: string;         // ID of the original saved analysis
-  name: string;       // Title of the saved analysis, to be used as a display name
-  content: string;    // The aiOutput of the saved analysis
-  type: 'savedAnalysis'; // To distinguish from GoogleFile
-}
-
 export interface ProcessingStatus {
   isProcessing: boolean;
   currentStep: string;
@@ -67,7 +60,7 @@ export default function useAnalysisState() {
   const [aiOutput, setAiOutput] = useState("");
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
-  const [selectedSavedAnalysesSources, setSelectedSavedAnalysesSources] = useState<SavedAnalysisContentSource[]>([]);
+  const [selectedAnalysisIdsForPrompt, setSelectedAnalysisIdsForPrompt] = useState<string[]>([]);
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>({
     isProcessing: false,
     currentStep: "",
@@ -113,7 +106,6 @@ export default function useAnalysisState() {
   const handleClearFiles = useCallback(() => {
     setSelectedFiles([]);
     setDisplayFiles([]);
-    setSelectedSavedAnalysesSources([]); // Also clear selected saved analyses
   }, []);
   
   // Handle URL operations
@@ -200,29 +192,12 @@ export default function useAnalysisState() {
     toast.success("All saved analyses have been deleted!");
   }, []);
 
-  // Handle selection of saved analyses as content sources for prompt
-  const toggleSavedAnalysisAsSource = useCallback((analysis: SavedAnalysis) => {
-    setSelectedSavedAnalysesSources(prevSources => {
-      const existingSourceIndex = prevSources.findIndex(src => src.id === analysis.id);
-      if (existingSourceIndex !== -1) {
-        // Remove if already exists
-        return prevSources.filter(src => src.id !== analysis.id);
-      } else {
-        // Add new source
-        const newSource: SavedAnalysisContentSource = {
-          id: analysis.id,
-          name: analysis.title,
-          content: analysis.aiOutput,
-          type: 'savedAnalysis',
-        };
-        return [...prevSources, newSource];
-      }
-    });
-  }, []);
-
-  const removeSelectedSavedAnalysisSource = useCallback((id: string) => {
-    setSelectedSavedAnalysesSources(prevSources => 
-      prevSources.filter(src => src.id !== id)
+  // Handle selection of saved analyses for prompt
+  const toggleAnalysisSelectionForPrompt = useCallback((analysisId: string) => {
+    setSelectedAnalysisIdsForPrompt(prevSelectedIds =>
+      prevSelectedIds.includes(analysisId)
+        ? prevSelectedIds.filter(id => id !== analysisId)
+        : [...prevSelectedIds, analysisId]
     );
   }, []);
 
@@ -272,8 +247,7 @@ export default function useAnalysisState() {
     handleRenameAnalysis,
     handleDeleteAnalysis,
     handleDeleteAllAnalyses,
-    selectedSavedAnalysesSources,
-    toggleSavedAnalysisAsSource,
-    removeSelectedSavedAnalysisSource,
+    selectedAnalysisIdsForPrompt,
+    toggleAnalysisSelectionForPrompt,
   };
 }

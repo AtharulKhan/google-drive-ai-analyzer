@@ -87,9 +87,8 @@ export default function DriveAnalyzer() {
     handleRenameAnalysis,
     handleDeleteAnalysis,
     handleDeleteAllAnalyses,
-  selectedSavedAnalysesSources,
-  toggleSavedAnalysisAsSource,
-  removeSelectedSavedAnalysisSource,
+    selectedAnalysisIdsForPrompt,
+    toggleAnalysisSelectionForPrompt,
   } = useAnalysisState();
 
   // State variables
@@ -146,9 +145,8 @@ export default function DriveAnalyzer() {
       return;
     }
 
-    // Check if any source (files, text, URLs, or selected saved analyses) is present
-    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && selectedSavedAnalysesSources.length === 0) {
-      toast.error("Please select files, paste text, add URLs, or choose saved analyses to analyze.");
+    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0) {
+      toast.error("Please select files, paste text, or add URLs to analyze.");
       return;
     }
 
@@ -158,17 +156,13 @@ export default function DriveAnalyzer() {
     }
 
     // Determine the total number of items to process for progress calculation
-    // Now includes selectedSavedAnalysesSources in the count of sources
-    const totalItems = selectedFiles.length + 
-                       (urls.length > 0 ? 1 : 0) + 
-                       (pastedText.trim() !== "" ? 1 : 0) +
-                       selectedSavedAnalysesSources.length; // Add count of saved analyses
+    const totalItems = selectedFiles.length + (urls.length > 0 ? 1 : 0) + (pastedText.trim() !== "" ? 1 : 0);
 
     setProcessingStatus({
       isProcessing: true,
       currentStep: "Starting analysis...",
       progress: 0,
-      totalFiles: totalItems, 
+      totalFiles: totalItems,
       processedFiles: 0,
     });
 
@@ -215,66 +209,44 @@ export default function DriveAnalyzer() {
       }
       
       // 3. Process Google Drive Files
-      // Define file processing progress allocation, assuming other sources might take up to 20% (URLs 15%, Text 5%)
-      // Saved analyses will be processed similarly to files or text.
-      // Let's allocate up to 60% for files and saved analyses combined for simplicity in progress.
-      const sourcesProcessingProgressMax = 60; 
-      const initialProgressForSources = currentProgress; // Progress before files and saved analyses
+      const fileProcessingProgressMax = 60; // Files take up to 60% of progress
+      const initialProgressForFiles = currentProgress;
 
       if (selectedFiles.length > 0 && !accessToken) {
         toast.error("Cannot process Google Drive files without being signed in.");
+        // Reset processing status or handle as a partial failure if other content exists
         setProcessingStatus({ isProcessing: false, currentStep: "", progress: 0, totalFiles: 0, processedFiles: 0 });
         return;
       }
 
-      const totalLocalSources = selectedFiles.length + selectedSavedAnalysesSources.length;
-      let localSourcesProcessed = 0;
-
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         itemsProcessed++;
-        localSourcesProcessed++;
         setProcessingStatus(prev => ({
           ...prev,
           currentStep: `Processing file ${i + 1} of ${selectedFiles.length}: ${file.name}`,
-          progress: initialProgressForSources + Math.round((localSourcesProcessed / totalLocalSources) * sourcesProcessingProgressMax),
+          // Progress for files is spread within their 60% allocation
+          progress: initialProgressForFiles + Math.round(((i + 1) / selectedFiles.length) * fileProcessingProgressMax),
           processedFiles: itemsProcessed - 1,
         }));
 
         try {
-          const content = await fetchFileContent(file, accessToken!);
+          const content = await fetchFileContent(file, accessToken!); // accessToken is checked above for selectedFiles
           const truncatedContent = content.slice(0, MAX_DOC_CHARS);
           allContentSources.push(
-            `### File: ${file.name} (ID: ${file.id})\n\n${truncatedContent}` // Added "File: " for clarity
+            `### ${file.name} (ID: ${file.id})\n${truncatedContent}`
           );
         } catch (error) {
           console.error(`Error processing file ${file.name}:`, error);
           allContentSources.push(
-            `### File: ${file.name} (ID: ${file.id})\n\n(Error extracting content: ${
+            `### ${file.name} (ID: ${file.id})\n(Error extracting content: ${
               error instanceof Error ? error.message : "Unknown error"
             })`
           );
         }
       }
+      currentProgress = initialProgressForFiles + (selectedFiles.length > 0 ? fileProcessingProgressMax : 0);
 
-      // 4. Process Selected Saved Analyses
-      for (let i = 0; i < selectedSavedAnalysesSources.length; i++) {
-        const source = selectedSavedAnalysesSources[i];
-        itemsProcessed++;
-        localSourcesProcessed++;
-        setProcessingStatus(prev => ({
-          ...prev,
-          currentStep: `Processing saved analysis ${i + 1} of ${selectedSavedAnalysesSources.length}: ${source.name}`,
-          progress: initialProgressForSources + Math.round((localSourcesProcessed / totalLocalSources) * sourcesProcessingProgressMax),
-          processedFiles: itemsProcessed - 1,
-        }));
-        allContentSources.push(
-          `### Saved Analysis: ${source.name} (ID: ${source.id})\n\n${source.content}`
-        );
-      }
-      currentProgress = initialProgressForSources + (totalLocalSources > 0 ? sourcesProcessingProgressMax : 0);
-      
-      // Check if any content was actually gathered
       if (allContentSources.length === 0) {
         toast.error("No content could be processed from the provided sources.");
         setProcessingStatus({ isProcessing: false, currentStep: "", progress: 0, totalFiles: 0, processedFiles: 0 });
@@ -283,19 +255,37 @@ export default function DriveAnalyzer() {
 
       const combinedContent = allContentSources.join("\n\n--- DOC SEPARATOR ---\n\n");
 
-      // Update progress status for OpenRouter API call
+      // Update progress status for OpenRouter API call (remaining progress up to 100%)
       setProcessingStatus(prev => ({
         ...prev,
         currentStep: "Analyzing with AI...",
-        progress: Math.min(currentProgress + 5, 95), 
-        processedFiles: totalItems, 
+        progress: Math.min(currentProgress + 5, 95), // AI call starts, moves to 95% before completion
+        processedFiles: totalItems, // All source items processed
       }));
       
-      // The userPrompt is now directly used, customInstructions are prepended if they exist.
-      // The content from selectedSavedAnalysesSources is already in combinedContent.
+      // Call OpenRouter API with custom instructions if provided
+      // Integrate selected saved analyses into the prompt
+      let finalUserPrompt = userPrompt;
+      if (selectedAnalysisIdsForPrompt.length > 0) {
+        const selectedAnalyses = savedAnalyses.filter(analysis => 
+          selectedAnalysisIdsForPrompt.includes(analysis.id)
+        );
+
+        if (selectedAnalyses.length > 0) {
+          let includedAnalysesContent = "\n\n=== START OF INCLUDED SAVED ANALYSES ===\n\n";
+          selectedAnalyses.forEach(analysis => {
+            includedAnalysesContent += `--- Analysis: ${analysis.title} ---\n\n`;
+            includedAnalysesContent += `${analysis.aiOutput}\n\n`;
+            includedAnalysesContent += `--- END OF Analysis: ${analysis.title} ---\n\n`;
+          });
+          includedAnalysesContent += "=== END OF INCLUDED SAVED ANALYSES ===\n\n";
+          finalUserPrompt = includedAnalysesContent + userPrompt;
+        }
+      }
+      
       const finalPrompt = customInstructions 
-        ? `${customInstructions}\n\n${userPrompt}` 
-        : userPrompt;
+        ? `${customInstructions}\n\n${finalUserPrompt}`
+        : finalUserPrompt;
         
       const result = await analyzeWithOpenRouter(combinedContent, finalPrompt, {
         model: aiModel,
@@ -318,9 +308,6 @@ export default function DriveAnalyzer() {
       if (pastedText.trim() !== "") {
         analysisSources.push({ type: 'text', name: 'Pasted Text Content' });
       }
-      selectedSavedAnalysesSources.forEach(sSource => {
-        analysisSources.push({ type: 'savedAnalysis', name: sSource.name });
-      });
 
       const currentTimestamp = Date.now();
       const newAnalysis = {
@@ -334,31 +321,9 @@ export default function DriveAnalyzer() {
 
       handleSaveAnalysis(newAnalysis);
       
-      // Clear selected saved analyses sources after use
-      if (selectedSavedAnalysesSources.length > 0) {
-        // Create a new empty array or call a specific clearing function if available
-        // For now, let's assume toggling them all off or a dedicated clear function would handle this.
-        // This part depends on how `selectedSavedAnalysesSources` is managed.
-        // If clearing is done by toggling each, that's handled by useAnalysisState's clear functions.
-        // For now, we'll rely on the `handleClearFiles` in `useAnalysisState` being updated,
-        // or a new specific function like `clearSelectedSavedAnalysesSources()` if added.
-        // The prompt asks to update handleClearFiles, which should cover this implicitly when sources are "cleared".
-        // However, for clarity after *each* run, we might want to explicitly clear them.
-        // Let's refine this: the prompt says `handleClearFiles` clears them.
-        // But for *after run analysis*, they should be cleared too.
-        // The existing logic for `selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id))`
-        // effectively cleared the selection. We need similar logic for selectedSavedAnalysesSources.
-        // We can iterate and call `toggleSavedAnalysisAsSource` for each selected source's original analysis object.
-        // This is a bit tricky as `toggleSavedAnalysisAsSource` expects `SavedAnalysis` not `SavedAnalysisContentSource`.
-        // A simpler approach for now might be to call a dedicated clear function if one existed,
-        // or rely on the user to de-select.
-        // For now, let's assume `handleClearFiles` (if called) or manual deselection handles this.
-        // The prompt for useAnalysisState updates handleClearFiles.
-        // The prompt for DriveAnalyzer.tsx: "The existing handleClearFiles function should also be augmented... to clear selectedSavedAnalysesSources"
-        // This is done in useAnalysisState.
-        // After a run, we should clear them.
-        const analysesToToggleOff = savedAnalyses.filter(sa => selectedSavedAnalysesSources.find(ssas => ssas.id === sa.id));
-        analysesToToggleOff.forEach(analysis => toggleSavedAnalysisAsSource(analysis));
+      // Clear selected analyses for prompt after use
+      if (selectedAnalysisIdsForPrompt.length > 0) {
+        selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id)); // This will clear the array
       }
 
       // Reset processing state after a short delay
@@ -522,32 +487,22 @@ export default function DriveAnalyzer() {
                   </Button>
 
                   <Button
-                    onClick={handleClearFiles} // This now clears selectedFiles AND selectedSavedAnalysesSources
-                    disabled={selectedFiles.length === 0 && selectedSavedAnalysesSources.length === 0}
+                    onClick={handleClearFiles}
+                    disabled={selectedFiles.length === 0}
                     className="flex-1"
                     variant="outline"
                   >
                     <Trash2 className="mr-2" />
-                    Clear All Sources
+                    Clear All Files
                   </Button>
                 </div>
 
                 {/* File List Component */}
                 <FileList 
-                  sources={
-                    [
-                      ...displayFiles.map(file => ({ id: file.id, name: file.name, type: 'file' as const, original: file, icon: file.iconLink, webViewLink: file.webViewLink }) ),
-                      ...selectedSavedAnalysesSources.map(source => ({ id: source.id, name: source.name, type: 'savedAnalysis' as const, original: source, icon: undefined, webViewLink: undefined }))
-                    ]
-                  }
-                  onRemoveSource={(id, type) => {
-                    if (type === 'file') {
-                      handleRemoveFile(id);
-                    } else if (type === 'savedAnalysis') {
-                      removeSelectedSavedAnalysisSource(id);
-                    }
-                  }}
-                  onClearAllSources={handleClearFiles} // handleClearFiles now clears all types of sources
+                  selectedFiles={selectedFiles}
+                  displayFiles={displayFiles}
+                  onRemoveFile={handleRemoveFile}
+                  onClearFiles={handleClearFiles}
                 />
 
                 <Separator className="my-6" />
@@ -619,9 +574,9 @@ export default function DriveAnalyzer() {
           <Button
             onClick={handleRunAnalysis}
             disabled={
-              (!isSignedIn && selectedFiles.length > 0) || 
-              (!isReady && selectedFiles.length > 0) || 
-              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && selectedSavedAnalysesSources.length === 0) || // Updated condition
+              (!isSignedIn && selectedFiles.length > 0) || // Disable if not signed in AND trying to process files
+              (!isReady && selectedFiles.length > 0) || // Disable if picker not ready AND trying to process files
+              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0) ||
               processingStatus.isProcessing
             }
             className="w-full sm:w-auto"
@@ -649,13 +604,8 @@ export default function DriveAnalyzer() {
         onRenameAnalysis={handleRenameAnalysis}
         onDeleteAnalysis={handleDeleteAnalysis}
         onDeleteAllAnalyses={handleDeleteAllAnalyses}
-        selectedAnalysisIdsForPrompt={selectedSavedAnalysesSources.map(s => s.id)} // Pass IDs for checkbox state
-        toggleAnalysisSelectionForPrompt={(analysisId) => { // Adapt to what SavedAnalysesSidebar expects or update sidebar
-          const analysis = savedAnalyses.find(a => a.id === analysisId);
-          if (analysis) {
-            toggleSavedAnalysisAsSource(analysis);
-          }
-        }}
+        selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
+        toggleAnalysisSelectionForPrompt={toggleAnalysisSelectionForPrompt}
       />
 
       {viewingAnalysis && (

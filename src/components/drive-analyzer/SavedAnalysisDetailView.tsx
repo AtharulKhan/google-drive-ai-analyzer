@@ -11,7 +11,7 @@ import { Copy } from 'lucide-react';
 
 // Conceptual - for prop definition, will be moved to a shared types file later
 export interface SavedAnalysisSource {
-  type: 'file' | 'url' | 'text' | 'savedAnalysis'; // Added 'savedAnalysis'
+  type: 'file' | 'url' | 'text';
   name: string;
 }
 export interface SavedAnalysis {

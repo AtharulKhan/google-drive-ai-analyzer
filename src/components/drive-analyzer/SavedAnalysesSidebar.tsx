@@ -48,8 +48,8 @@ interface SavedAnalysesSidebarProps {
   onRenameAnalysis: (id: string, newTitle: string) => void;
   onDeleteAnalysis: (id: string) => void;
   onDeleteAllAnalyses: () => void;
-  selectedSourceAnalysisIds: string[]; // Renamed from selectedAnalysisIdsForPrompt
-  onToggleAnalysisAsSource: (analysis: SavedAnalysis) => void; // Renamed and signature updated
+  selectedAnalysisIdsForPrompt: string[];
+  toggleAnalysisSelectionForPrompt: (analysisId: string) => void;
 }
 
 export function SavedAnalysesSidebar({
@@ -60,8 +60,8 @@ export function SavedAnalysesSidebar({
   onRenameAnalysis,
   onDeleteAnalysis,
   onDeleteAllAnalyses,
-  selectedSourceAnalysisIds, // Renamed
-  onToggleAnalysisAsSource, // Renamed
+  selectedAnalysisIdsForPrompt,
+  toggleAnalysisSelectionForPrompt,
 }: SavedAnalysesSidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [newTitleInput, setNewTitleInput] = useState<string>('');
@@ -120,10 +120,7 @@ export function SavedAnalysesSidebar({
       <SheetContent className="w-[400px] sm:w-[540px] flex flex-col">
         <SheetHeader className="pr-6">
           <SheetTitle>Saved Analyses</SheetTitle>
-          <SheetDescription>
-            Select analyses to include their AI output as content sources for your next analysis.
-            You can also view, rename, or delete your past AI analyses.
-          </SheetDescription>
+          <SheetDescription>View, rename, or delete your past AI analyses.</SheetDescription>
         </SheetHeader>
         <ScrollArea className="flex-grow h-[calc(100vh-200px)] pr-1"> {/* Adjusted height and pr */}
           {savedAnalyses.length === 0 ? (
@@ -153,8 +150,8 @@ export function SavedAnalysesSidebar({
                         <div className="flex items-center space-x-2">
                           <Checkbox
                             id={`select-analysis-${analysis.id}`}
-                            checked={selectedSourceAnalysisIds.includes(analysis.id)} // Use renamed prop
-                            onCheckedChange={() => onToggleAnalysisAsSource(analysis)} // Use renamed prop and pass full analysis
+                            checked={selectedAnalysisIdsForPrompt.includes(analysis.id)}
+                            onCheckedChange={() => toggleAnalysisSelectionForPrompt(analysis.id)}
                           />
                           <label htmlFor={`select-analysis-${analysis.id}`} className="cursor-pointer">{analysis.title}</label>
                         </div>
