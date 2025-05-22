@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import { useDrivePicker, GoogleFile } from "@/hooks/useDrivePicker";
 import { fetchFileContent } from "@/utils/google-api";
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
 import { getDefaultAIModel } from "@/utils/ai-models";
-import { scrapeUrls } from "@/utils/scraping";
+import { analyzeMultipleUrlsWithApify } from "@/utils/apify-api";
 
 // Import our components
 import { FileList } from "./drive-analyzer/FileList";
@@ -158,7 +157,7 @@ export default function DriveAnalyzer() {
     setDisplayFiles([]);
   }, []);
 
-  // Process files and send to OpenRouter for analysis
+  // Updated process files and send to OpenRouter for analysis with Apify integration
   const handleRunAnalysis = useCallback(async () => {
     if (!accessToken && selectedFiles.length > 0) { // Only require accessToken if Drive files are selected
       toast.error("Please sign in to Google Drive to process selected files.");
@@ -194,23 +193,25 @@ export default function DriveAnalyzer() {
       let currentProgress = 0;
       let itemsProcessed = 0;
 
-      // 1. Scrape URLs
+      // 1. Analyze URLs with Apify (replacing scrapeUrls)
       if (urls.length > 0) {
         itemsProcessed++;
         setProcessingStatus(prev => ({
           ...prev,
-          currentStep: `Scraping ${urls.length} URL(s)...`,
+          currentStep: `Analyzing ${urls.length} URL(s) with Apify...`,
           progress: Math.round((itemsProcessed / totalItems) * 15), // Scraping takes up to 15%
           processedFiles: itemsProcessed -1, // visually show progress on current item
         }));
-        const scrapeResult = await scrapeUrls(urls);
-        if (scrapeResult.failedUrls.length > 0) {
-          toast.warning(`Failed to scrape: ${scrapeResult.failedUrls.join(', ')}`);
+        
+        const apifyResult = await analyzeMultipleUrlsWithApify(urls);
+        
+        if (apifyResult.failedUrls.length > 0) {
+          toast.warning(`Failed to analyze: ${apifyResult.failedUrls.join(', ')}`);
         }
-        if (scrapeResult.combinedText.trim() !== "") {
-          allContentSources.push(scrapeResult.combinedText.trim());
+        if (apifyResult.combinedAnalyzedText.trim() !== "") {
+          allContentSources.push(apifyResult.combinedAnalyzedText.trim());
         }
-        currentProgress = 15; // Mark scraping as 15% done
+        currentProgress = 15; // Mark URL analysis as 15% done
       }
 
       // 2. Process Pasted Text
@@ -236,7 +237,6 @@ export default function DriveAnalyzer() {
         setProcessingStatus({ isProcessing: false, currentStep: "", progress: 0, totalFiles: 0, processedFiles: 0 });
         return;
       }
-
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
@@ -265,7 +265,6 @@ export default function DriveAnalyzer() {
         }
       }
       currentProgress = initialProgressForFiles + (selectedFiles.length > 0 ? fileProcessingProgressMax : 0);
-
 
       if (allContentSources.length === 0) {
         toast.error("No content could be processed from the provided sources.");
@@ -322,13 +321,10 @@ export default function DriveAnalyzer() {
 
       setSavedAnalyses(prevAnalyses => {
         const updatedAnalyses = [newAnalysis, ...prevAnalyses];
-        // Optional: Limit the number of saved analyses, e.g., keep latest 50
-        // const limitedAnalyses = updatedAnalyses.slice(0, 50); 
-        localStorage.setItem(SAVED_ANALYSES_KEY, JSON.stringify(updatedAnalyses /* or limitedAnalyses */));
-        return updatedAnalyses; /* or limitedAnalyses */
+        localStorage.setItem(SAVED_ANALYSES_KEY, JSON.stringify(updatedAnalyses));
+        return updatedAnalyses;
       });
       toast.success("Analysis saved successfully!");
-
 
       // Reset processing state after a short delay
       setTimeout(() => {
@@ -355,7 +351,7 @@ export default function DriveAnalyzer() {
         processedFiles: 0,
       });
     }
-  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel, urls, pastedText, isSignedIn, isReady]);
+  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel, urls, pastedText]);
 
   // Handle saving a new prompt
   const handleSavePrompt = useCallback(() => {
@@ -457,12 +453,7 @@ export default function DriveAnalyzer() {
 
   const handleViewAnalysis = useCallback((analysis: SavedAnalysis) => {
     setViewingAnalysis(analysis);
-    // Logic to open a dialog will be added later when integrating SavedAnalysisDetailView
-    // For now, we can log to console or trigger a toast to confirm it's called
-    // console.log("Viewing analysis:", analysis);
-    // toast.info(`Viewing analysis: ${analysis.title}`); 
   }, []);
-
 
   // Handle text area input to check for trigger characters
   const handleTextAreaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {

@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, FileText, Download } from "lucide-react";
+import { Copy, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { ProcessingStatus } from "./ProcessingStatus";
 import { downloadAsPdf } from "@/utils/pdf-generator";
@@ -46,21 +46,23 @@ export function AnalysisResults({ processingStatus, aiOutput }: AnalysisResultsP
                 navigator.clipboard.writeText(aiOutput);
                 toast.success("Results copied to clipboard");
               }}
+              className="text-xs md:text-sm"
             >
-              <Copy className="h-4 w-4 mr-2" />
+              <Copy className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
               Copy
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={handleDownloadPdf}
+              className="text-xs md:text-sm"
             >
-              <FileText className="h-4 w-4 mr-2" />
-              Download PDF
+              <FileText className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              PDF
             </Button>
           </div>
-          <ScrollArea className="border rounded-md p-4 h-[500px]">
-            <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
+          <ScrollArea className="border rounded-md p-2 md:p-4 h-[450px] md:h-[500px]">
+            <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap px-2 pt-10 md:pt-8 md:px-4">
               {aiOutput.split("\n").map((line, i) => (
                 <React.Fragment key={i}>
                   {line}
@@ -71,7 +73,7 @@ export function AnalysisResults({ processingStatus, aiOutput }: AnalysisResultsP
           </ScrollArea>
         </div>
       ) : (
-        <div className="h-[500px] border rounded-md flex items-center justify-center text-muted-foreground">
+        <div className="h-[400px] md:h-[500px] border rounded-md flex items-center justify-center text-muted-foreground p-4 text-center">
           {processingStatus.isProcessing
             ? "Processing... Please wait."
             : "No analysis results yet. Select files and run analysis."}

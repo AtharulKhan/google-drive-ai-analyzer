@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { toast } from 'sonner';
 
@@ -17,12 +17,22 @@ export default function SettingsPage() {
   const [openRouterKey, setOpenRouterKey] = useState('');
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
   
-  // Load OpenRouter API key from localStorage on component mount
+  // State for Apify API key
+  const [apifyToken, setApifyToken] = useState('');
+  const [showApifyToken, setShowApifyToken] = useState(false);
+  
+  // Load API keys from localStorage on component mount
   useEffect(() => {
-    const savedKey = localStorage.getItem('openRouterApiKey') || '';
-    // If key exists, show masked version
-    if (savedKey) {
-      setOpenRouterKey(savedKey);
+    const savedOpenRouterKey = localStorage.getItem('openRouterApiKey') || '';
+    const savedApifyToken = localStorage.getItem('apifyApiToken') || '';
+    
+    // If keys exist, show them
+    if (savedOpenRouterKey) {
+      setOpenRouterKey(savedOpenRouterKey);
+    }
+    
+    if (savedApifyToken) {
+      setApifyToken(savedApifyToken);
     }
   }, []);
   
@@ -36,6 +46,13 @@ export default function SettingsPage() {
     if (openRouterKey.trim()) {
       localStorage.setItem('openRouterApiKey', openRouterKey.trim());
       toast.success("OpenRouter API Key saved successfully");
+    }
+  };
+  
+  const handleSaveApifyToken = () => {
+    if (apifyToken.trim()) {
+      localStorage.setItem('apifyApiToken', apifyToken.trim());
+      toast.success("Apify API Token saved successfully");
     }
   };
   
@@ -94,7 +111,7 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
         
-        <Card className="shadow-md">
+        <Card className="shadow-md mb-6">
           <CardHeader>
             <CardTitle>OpenRouter API Configuration</CardTitle>
             <CardDescription>
@@ -128,7 +145,8 @@ export default function SettingsPage() {
                   className="h-5 px-2 text-xs"
                   onClick={() => setShowOpenRouterKey(!showOpenRouterKey)}
                 >
-                  {showOpenRouterKey ? 'Hide' : 'Show'}
+                  {showOpenRouterKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                  <span className="ml-1">{showOpenRouterKey ? 'Hide' : 'Show'}</span>
                 </Button>
               </Label>
               <Input
@@ -148,6 +166,66 @@ export default function SettingsPage() {
           <CardFooter>
             <Button onClick={handleSaveApiKey} disabled={!openRouterKey.trim()}>
               Save API Key
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        {/* NEW: Apify API Configuration Card */}
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle>Apify API Configuration</CardTitle>
+            <CardDescription>
+              Configure your Apify API Token for web scraping capabilities.
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-800 mb-4">
+              <div className="flex gap-2 items-start">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 dark:text-amber-400">
+                    An Apify API Token is required to use advanced web scraping features.
+                  </p>
+                  <ol className="list-decimal list-inside text-xs text-amber-700 dark:text-amber-500 mt-2 space-y-1">
+                    <li>Go to your <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener noreferrer" className="underline">Apify Account Integrations</a> page.</li>
+                    <li>Copy your personal API token.</li>
+                    <li>Paste it below and save.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="apifyToken" className="flex justify-between items-center">
+                <span>Apify API Token</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-5 px-2 text-xs"
+                  onClick={() => setShowApifyToken(!showApifyToken)}
+                >
+                  {showApifyToken ? <EyeOff size={14}/> : <Eye size={14}/>}
+                  <span className="ml-1">{showApifyToken ? 'Hide' : 'Show'}</span>
+                </Button>
+              </Label>
+              <Input
+                id="apifyToken"
+                type={showApifyToken ? "text" : "password"}
+                placeholder="Enter your Apify API Token"
+                value={apifyToken}
+                onChange={(e) => setApifyToken(e.target.value)}
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Example: apify_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+              </p>
+            </div>
+          </CardContent>
+          
+          <CardFooter>
+            <Button onClick={handleSaveApifyToken} disabled={!apifyToken.trim()}>
+              Save Apify Token
             </Button>
           </CardFooter>
         </Card>
