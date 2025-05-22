@@ -1,8 +1,8 @@
 
 import { toast } from 'sonner';
 
-// Using the website-content-crawler actor
-const ACTOR_ID = 'apify/website-content-crawler';
+// Using the website-content-crawler actor ID
+const ACTOR_NAME_OR_ID = 'apify~website-content-crawler';
 
 export interface ApifyCrawlingOptions {
   maxCrawlDepth?: number;
@@ -24,14 +24,6 @@ interface ApifyActorInput {
   proxyConfiguration?: {
     useApifyProxy?: boolean;
   };
-  // Additional options for the website-content-crawler actor
-  includeUrlGlobs?: Array<{ glob: string }>;
-  excludeUrlGlobs?: Array<{ glob: string }>;
-  initialCookies?: any[];
-  keepUrlFragments?: boolean;
-  ignoreCanonicalUrl?: boolean;
-  removeElementsCssSelector?: string;
-  htmlTransformer?: string;
 }
 
 interface ScrapedContentResult {
@@ -51,8 +43,8 @@ function formatDatasetItemsToText(items: any[]): string {
     formattedText += `## Page ${index + 1}: ${item.url}\n\n`;
     
     // Add the title if available
-    if (item.metadata && item.metadata.title) {
-      formattedText += `### ${item.metadata.title}\n\n`;
+    if (item.title) {
+      formattedText += `### ${item.title}\n\n`;
     }
 
     // Add the markdown content if available (primary content format)
@@ -72,7 +64,7 @@ function formatDatasetItemsToText(items: any[]): string {
 
 export async function analyzeUrlWithApify(
   url: string, 
-  options: ApifyCrawlingOptions = {}
+  options: ApifyCrawlingOptions = {} // Default empty options object
 ): Promise<ScrapedContentResult> {
   const apifyToken = localStorage.getItem('apifyApiToken');
 
@@ -81,20 +73,20 @@ export async function analyzeUrlWithApify(
     return { analyzedText: "", failedUrl: url, error: "Apify API Token not set." };
   }
 
+  // Build the API URL for website-content-crawler
+  const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_NAME_OR_ID}/run-sync-get-dataset-items?token=${apifyToken}`;
+
   // Set default options
   const defaultOptions = {
     maxCrawlDepth: 0, // Default to crawling only the provided URL (no links)
     maxCrawlPages: 1, // Default to crawling just 1 page
     maxResults: 1, // Default to storing only 1 result
-    crawlerType: "cheerio", // Default to faster HTML parsing instead of browser
-    useSitemaps: false, // Default to not using sitemaps
-    htmlTransformer: "readableText" // Default HTML transformer
+    crawlerType: "playwright:firefox", // Default browser
+    useSitemaps: false // Default to not using sitemaps
   };
 
   // Merge default options with provided options
   const mergedOptions = { ...defaultOptions, ...options };
-
-  console.log("Analyzing URL with options:", mergedOptions);
 
   // Prepare the input according to website-content-crawler schema
   const input: ApifyActorInput = {
@@ -108,34 +100,11 @@ export async function analyzeUrlWithApify(
     maxCrawlDepth: mergedOptions.maxCrawlDepth,
     proxyConfiguration: { 
       useApifyProxy: true 
-    },
-    // Set additional needed options
-    htmlTransformer: "readableText",
-    removeElementsCssSelector: `nav, footer, script, style, noscript, svg, img[src^='data:'],
-      [role="alert"],
-      [role="banner"],
-      [role="dialog"],
-      [role="alertdialog"],
-      [role="region"][aria-label*="skip" i],
-      [aria-modal="true"]`
+    }
   };
 
   try {
-    console.log(`Sending request to Apify for URL: ${url} with input:`, JSON.stringify(input, null, 2));
-    
-    // Previous CORS issue: We can't directly fetch from the browser to Apify's API
-    // We need to use a proxy server or alternatively, for this frontend app, 
-    // use a different approach like JSON-P or have the user use our own deployment endpoint
-    
-    // Two options:
-    // 1. Use the Apify client SDK (which handles CORS) - requires adding the SDK as a dependency
-    // 2. Use a proxy function that your hosting environment might provide
-    // For now, we'll implement a simpler solution to make it work in the browser
-    
-    // Fallback approach that might work for some deployments:
-    // Add mode: 'no-cors' to make the request pass, but we won't be able to read the response directly
-    // This isn't a full solution but can prevent the immediate error
-    const response = await fetch(`https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items?token=${apifyToken}`, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,22 +113,14 @@ export async function analyzeUrlWithApify(
     });
 
     if (!response.ok) {
-      // Handle error response
-      let errorMessage;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData?.error?.message || `HTTP error ${response.status}`;
-      } catch (e) {
-        errorMessage = `HTTP error ${response.status} (${response.statusText})`;
-      }
-      
-      console.error(`Failed to analyze URL ${url} with Apify:`, errorMessage);
-      toast.error(`Apify analysis failed: ${errorMessage}`);
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      const errorMessage = errorData?.error?.message || errorData?.message || `HTTP error ${response.status}`;
+      console.error(`Failed to analyze URL ${url} with Apify:`, errorMessage, errorData);
+      toast.error(`Apify analysis failed for ${url}: ${errorMessage}`);
       return { analyzedText: "", failedUrl: url, error: errorMessage };
     }
 
     const datasetItems = await response.json();
-    console.log(`Received ${datasetItems.length} items from Apify for URL: ${url}`);
     
     if (!Array.isArray(datasetItems)) {
       console.error(`Unexpected response format from Apify for ${url}:`, datasetItems);
@@ -174,14 +135,7 @@ export async function analyzeUrlWithApify(
     console.error(`Error during Apify URL analysis for ${url}:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error during Apify analysis.";
     toast.error(`Error analyzing ${url} with Apify: ${errorMessage}`);
-    
-    // Provide better error guidance
-    let enhancedError = errorMessage;
-    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("CORS")) {
-      enhancedError = "CORS error: The Apify API cannot be accessed directly from the browser. Please check the browser console for more details and consider using a server-side proxy for API calls or a browser extension to bypass CORS restrictions.";
-    }
-    
-    return { analyzedText: "", failedUrl: url, error: enhancedError };
+    return { analyzedText: "", failedUrl: url, error: errorMessage };
   }
 }
 
@@ -196,10 +150,6 @@ export async function analyzeMultipleUrlsWithApify(
   // For multiple URLs, we'll process them sequentially to avoid overwhelming the API
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
-    
-    // Add progress notification
-    toast.info(`Processing URL ${i + 1} of ${urls.length}: ${url}`);
-    
     const result = await analyzeUrlWithApify(url, options);
     
     combinedAnalyzedText += `### Analysis for URL: ${url}\n\n`;

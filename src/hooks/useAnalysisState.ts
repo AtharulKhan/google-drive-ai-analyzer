@@ -44,13 +44,13 @@ export default function useAnalysisState() {
   const [currentUrlInput, setCurrentUrlInput] = useState<string>("");
   const [urls, setUrls] = useState<string[]>([]);
   
-  // Crawling options with better defaults for browser environment
+  // Crawling options
   const [crawlingOptions, setCrawlingOptions] = useState<ApifyCrawlingOptions>({
-    maxCrawlDepth: 0,     // Default to crawling only the URL (no links)
-    maxCrawlPages: 1,     // Default to crawling just the URL itself
-    maxResults: 1,        // Default to storing only 1 result
-    crawlerType: "cheerio", // Default to faster HTML parsing instead of browser
-    useSitemaps: false    // Default to not using sitemaps
+    maxCrawlDepth: 0,
+    maxCrawlPages: 1,
+    maxResults: 1,
+    crawlerType: "playwright:firefox",
+    useSitemaps: false
   });
   
   // Prompts and analysis state
@@ -123,21 +123,8 @@ export default function useAnalysisState() {
   }, []);
 
   // Handle crawling options
-  const handleCrawlingOptionsChange = useCallback((newOptions: Partial<ApifyCrawlingOptions>) => {
-    setCrawlingOptions(prev => {
-      // Create a new object with the previous options
-      const updatedOptions = { ...prev };
-      
-      // Only update properties that are explicitly set in newOptions
-      Object.keys(newOptions).forEach(key => {
-        const typedKey = key as keyof ApifyCrawlingOptions;
-        if (newOptions[typedKey] !== undefined) {
-          updatedOptions[typedKey] = newOptions[typedKey];
-        }
-      });
-      
-      return updatedOptions;
-    });
+  const handleCrawlingOptionsChange = useCallback((newOptions: ApifyCrawlingOptions) => {
+    setCrawlingOptions(newOptions);
   }, []);
   
   // Handle text operations
