@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,16 +15,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FolderOpen, Loader2, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
-import { useDrivePicker, GoogleFile } from "@/hooks/useDrivePicker";
+import { useDrivePicker } from "@/hooks/useDrivePicker";
 import { fetchFileContent } from "@/utils/google-api";
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
 import { getDefaultAIModel } from "@/utils/ai-models";
 import { analyzeMultipleUrlsWithApify } from "@/utils/apify-api";
+import useAnalysisState, { 
+  CUSTOM_INSTRUCTIONS_KEY,
+  SAVED_PROMPTS_KEY,
+  SavedPrompt
+} from "@/hooks/useAnalysisState";
 
 // Import our components
 import { FileList } from "./drive-analyzer/FileList";
 import { TextUrlInput } from "./drive-analyzer/TextUrlInput";
-import { SavedPrompts, SavedPrompt } from "./drive-analyzer/SavedPrompts";
+import { SavedPrompts } from "./drive-analyzer/SavedPrompts";
 import { SavedAnalysesSidebar } from "./drive-analyzer/SavedAnalysesSidebar"; 
 import { SavedAnalysisDetailView } from "./drive-analyzer/SavedAnalysisDetailView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -32,85 +38,77 @@ import { PromptSelector } from "./drive-analyzer/PromptSelector";
 import { AnalysisResults } from "./drive-analyzer/AnalysisResults";
 import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
 
-// Constants moved from the original component
+// Constants
 const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
-const SAVED_PROMPTS_KEY = "drive-analyzer-saved-prompts";
-const CUSTOM_INSTRUCTIONS_KEY = "drive-analyzer-custom-instructions";
-const SAVED_ANALYSES_KEY = "drive-analyzer-saved-analyses";
-
-// Type definitions (can be moved to a shared types file later)
-export interface SavedAnalysisSource {
-  type: 'file' | 'url' | 'text';
-  name: string; 
-}
-
-export interface SavedAnalysis {
-  id: string;
-  title: string; 
-  timestamp: number; 
-  prompt: string;
-  aiOutput: string;
-  sources: SavedAnalysisSource[];
-}
 
 export default function DriveAnalyzer() {
+  // Use our custom hook for state management
+  const {
+    // Files
+    selectedFiles,
+    setSelectedFiles,
+    displayFiles,
+    handleAddFiles,
+    handleRemoveFile,
+    handleClearFiles,
+    
+    // Text/URL inputs
+    pastedText,
+    handlePastedTextChange,
+    handleClearPastedText,
+    currentUrlInput,
+    setCurrentUrlInput,
+    urls,
+    handleAddUrl,
+    handleRemoveUrl,
+    handleClearUrls,
+    
+    // Crawling options
+    crawlingOptions,
+    handleCrawlingOptionsChange,
+    
+    // Analysis state
+    userPrompt,
+    setUserPrompt,
+    aiOutput,
+    setAiOutput,
+    processingStatus,
+    setProcessingStatus,
+    activeTab,
+    setActiveTab,
+    
+    // Saved items
+    savedPrompts,
+    setSavedPrompts,
+    savedAnalyses,
+    handleSaveAnalysis,
+    handleRenameAnalysis,
+    handleDeleteAnalysis,
+    handleDeleteAllAnalyses,
+  } = useAnalysisState();
+
   // State variables
-  const [selectedFiles, setSelectedFiles] = useState<GoogleFile[]>([]);
-  const [displayFiles, setDisplayFiles] = useState<GoogleFile[]>([]);
-  const [userPrompt, setUserPrompt] = useState(
-    "Summarize this content in detail, highlighting key points and insights."
-  );
   const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
   const [maxFiles, setMaxFiles] = useState<number>(DEFAULT_MAX_FILES);
   const [includeSubfolders, setIncludeSubfolders] = useState(true);
   const [customInstructions, setCustomInstructions] = useState<string>("");
-  const [processingStatus, setProcessingStatus] = useState({
-    isProcessing: false,
-    currentStep: "",
-    progress: 0,
-    totalFiles: 0,
-    processedFiles: 0,
-  });
-  const [aiOutput, setAiOutput] = useState("");
-  const [activeTab, setActiveTab] = useState("files");
-  const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
   const [newPromptTitle, setNewPromptTitle] = useState("");
   const [newPromptContent, setNewPromptContent] = useState("");
   const [isPromptCommandOpen, setIsPromptCommandOpen] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // State for TextUrlInput
-  const [pastedText, setPastedText] = useState<string>("");
-  const [currentUrlInput, setCurrentUrlInput] = useState<string>("");
-  const [urls, setUrls] = useState<string[]>([]);
-
-  // State for SavedAnalyses
-  const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
   const [viewingAnalysis, setViewingAnalysis] = useState<SavedAnalysis | null>(null);
   const [isSavedAnalysesOpen, setIsSavedAnalysesOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Hooks
   const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
   const { openPicker, isReady } = useDrivePicker({ accessToken });
 
-  // Load saved prompts from localStorage
+  // Load custom instructions from localStorage
   useEffect(() => {
-    const loadedPrompts = localStorage.getItem(SAVED_PROMPTS_KEY);
-    if (loadedPrompts) {
-      setSavedPrompts(JSON.parse(loadedPrompts));
-    }
-    
-    // Load custom instructions
     const savedInstructions = localStorage.getItem(CUSTOM_INSTRUCTIONS_KEY);
     if (savedInstructions) {
       setCustomInstructions(savedInstructions);
-    }
-
-    // Load saved analyses
-    const loadedAnalyses = localStorage.getItem(SAVED_ANALYSES_KEY);
-    if (loadedAnalyses) {
-      setSavedAnalyses(JSON.parse(loadedAnalyses));
     }
   }, []);
   
@@ -120,11 +118,6 @@ export default function DriveAnalyzer() {
       localStorage.setItem(CUSTOM_INSTRUCTIONS_KEY, customInstructions);
     }
   }, [customInstructions]);
-
-  // When selected files change, update display files
-  useEffect(() => {
-    setDisplayFiles(selectedFiles.slice(0, 100)); // Limit display to first 100 files
-  }, [selectedFiles]);
 
   // Handle browsing Google Drive and selecting files
   const handleBrowseDrive = useCallback(() => {
@@ -136,26 +129,11 @@ export default function DriveAnalyzer() {
     // Use the enhanced picker that allows folder navigation and file selection
     openPicker({ multiple: true }, (files) => {
       if (files.length > 0) {
-        // Merge new files with existing ones, avoiding duplicates by file ID
-        const existingFileIds = new Set(selectedFiles.map(file => file.id));
-        const newFiles = files.filter(file => !existingFileIds.has(file.id));
-        
-        setSelectedFiles(prev => [...prev, ...newFiles]);
-        toast.success(`Added ${newFiles.length} new file(s)`);
+        handleAddFiles(files);
+        toast.success(`Added ${files.length} new file(s)`);
       }
     });
-  }, [isReady, openPicker, selectedFiles]);
-
-  // Remove individual file
-  const handleRemoveFile = useCallback((fileId: string) => {
-    setSelectedFiles(prev => prev.filter(file => file.id !== fileId));
-  }, []);
-
-  // Clear selected files
-  const handleClearFiles = useCallback(() => {
-    setSelectedFiles([]);
-    setDisplayFiles([]);
-  }, []);
+  }, [isReady, openPicker, handleAddFiles]);
 
   // Updated process files and send to OpenRouter for analysis with Apify integration
   const handleRunAnalysis = useCallback(async () => {
@@ -181,7 +159,7 @@ export default function DriveAnalyzer() {
       isProcessing: true,
       currentStep: "Starting analysis...",
       progress: 0,
-      totalFiles: totalItems, // Use totalItems here, might rename totalFiles later
+      totalFiles: totalItems,
       processedFiles: 0,
     });
 
@@ -193,17 +171,17 @@ export default function DriveAnalyzer() {
       let currentProgress = 0;
       let itemsProcessed = 0;
 
-      // 1. Analyze URLs with Apify (replacing scrapeUrls)
+      // 1. Analyze URLs with Apify (using our new crawling options)
       if (urls.length > 0) {
         itemsProcessed++;
         setProcessingStatus(prev => ({
           ...prev,
           currentStep: `Analyzing ${urls.length} URL(s) with Apify...`,
           progress: Math.round((itemsProcessed / totalItems) * 15), // Scraping takes up to 15%
-          processedFiles: itemsProcessed -1, // visually show progress on current item
+          processedFiles: itemsProcessed - 1, // visually show progress on current item
         }));
         
-        const apifyResult = await analyzeMultipleUrlsWithApify(urls);
+        const apifyResult = await analyzeMultipleUrlsWithApify(urls, crawlingOptions);
         
         if (apifyResult.failedUrls.length > 0) {
           toast.warning(`Failed to analyze: ${apifyResult.failedUrls.join(', ')}`);
@@ -221,7 +199,7 @@ export default function DriveAnalyzer() {
           ...prev,
           currentStep: "Processing pasted text...",
           progress: currentProgress + Math.round((itemsProcessed / totalItems) * 5), // Pasted text adds up to 5%
-          processedFiles: itemsProcessed -1,
+          processedFiles: itemsProcessed - 1,
         }));
         allContentSources.push(`### Pasted Text Content\n\n${pastedText.trim()}`);
         currentProgress += 5; // Add 5% for pasted text
@@ -246,7 +224,7 @@ export default function DriveAnalyzer() {
           currentStep: `Processing file ${i + 1} of ${selectedFiles.length}: ${file.name}`,
           // Progress for files is spread within their 60% allocation
           progress: initialProgressForFiles + Math.round(((i + 1) / selectedFiles.length) * fileProcessingProgressMax),
-          processedFiles: itemsProcessed -1,
+          processedFiles: itemsProcessed - 1,
         }));
 
         try {
@@ -310,7 +288,7 @@ export default function DriveAnalyzer() {
       }
 
       const currentTimestamp = Date.now();
-      const newAnalysis: SavedAnalysis = {
+      const newAnalysis = {
         id: currentTimestamp.toString(),
         title: `Analysis - ${new Date(currentTimestamp).toLocaleString()}`,
         timestamp: currentTimestamp,
@@ -319,12 +297,7 @@ export default function DriveAnalyzer() {
         sources: analysisSources,
       };
 
-      setSavedAnalyses(prevAnalyses => {
-        const updatedAnalyses = [newAnalysis, ...prevAnalyses];
-        localStorage.setItem(SAVED_ANALYSES_KEY, JSON.stringify(updatedAnalyses));
-        return updatedAnalyses;
-      });
-      toast.success("Analysis saved successfully!");
+      handleSaveAnalysis(newAnalysis);
 
       // Reset processing state after a short delay
       setTimeout(() => {
@@ -351,7 +324,7 @@ export default function DriveAnalyzer() {
         processedFiles: 0,
       });
     }
-  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel, urls, pastedText]);
+  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel, urls, pastedText, crawlingOptions, handleSaveAnalysis]);
 
   // Handle saving a new prompt
   const handleSavePrompt = useCallback(() => {
@@ -376,7 +349,7 @@ export default function DriveAnalyzer() {
     setNewPromptContent("");
     
     toast.success(`Prompt "${newPromptTitle}" saved successfully`);
-  }, [newPromptTitle, newPromptContent, savedPrompts]);
+  }, [newPromptTitle, newPromptContent, savedPrompts, setSavedPrompts]);
 
   // Handle deleting a saved prompt
   const handleDeletePrompt = useCallback((id: string) => {
@@ -384,76 +357,13 @@ export default function DriveAnalyzer() {
     setSavedPrompts(updatedPrompts);
     localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(updatedPrompts));
     toast.success("Prompt deleted");
-  }, [savedPrompts]);
+  }, [savedPrompts, setSavedPrompts]);
 
   // Handle inserting a prompt into the text area
   const handleInsertPrompt = useCallback((prompt: SavedPrompt) => {
     setUserPrompt(prompt.content);
     setIsPromptCommandOpen(false);
-  }, []);
-
-  // Handlers for TextUrlInput
-  const handlePastedTextChange = useCallback((text: string) => {
-    setPastedText(text);
-  }, []);
-
-  const handleCurrentUrlInputChange = useCallback((url: string) => {
-    setCurrentUrlInput(url);
-  }, []);
-
-  const handleAddUrl = useCallback(() => {
-    if (currentUrlInput.trim() !== "") {
-      if (currentUrlInput.startsWith('http://') || currentUrlInput.startsWith('https://')) {
-        setUrls(prevUrls => [...prevUrls, currentUrlInput.trim()]);
-        setCurrentUrlInput(""); 
-      } else {
-        toast.error("Please enter a valid URL (starting with http:// or https://)");
-      }
-    }
-  }, [currentUrlInput]);
-
-  const handleRemoveUrl = useCallback((index: number) => {
-    setUrls(prevUrls => prevUrls.filter((_, i) => i !== index));
-  }, []);
-
-  const handleClearPastedText = useCallback(() => {
-    setPastedText("");
-  }, []);
-
-  const handleClearUrls = useCallback(() => {
-    setUrls([]);
-  }, []);
-
-  // Handlers for SavedAnalyses
-  const handleRenameAnalysis = useCallback((id: string, newTitle: string) => {
-    setSavedAnalyses(prevAnalyses => {
-      const updatedAnalyses = prevAnalyses.map(analysis =>
-        analysis.id === id ? { ...analysis, title: newTitle } : analysis
-      );
-      localStorage.setItem(SAVED_ANALYSES_KEY, JSON.stringify(updatedAnalyses));
-      toast.success("Analysis renamed successfully!");
-      return updatedAnalyses;
-    });
-  }, []);
-
-  const handleDeleteAnalysis = useCallback((id: string) => {
-    setSavedAnalyses(prevAnalyses => {
-      const updatedAnalyses = prevAnalyses.filter(analysis => analysis.id !== id);
-      localStorage.setItem(SAVED_ANALYSES_KEY, JSON.stringify(updatedAnalyses));
-      toast.success("Analysis deleted successfully!");
-      return updatedAnalyses;
-    });
-  }, []);
-
-  const handleDeleteAllAnalyses = useCallback(() => {
-    setSavedAnalyses([]);
-    localStorage.removeItem(SAVED_ANALYSES_KEY); // Or setItem to '[]'
-    toast.success("All saved analyses have been deleted!");
-  }, []);
-
-  const handleViewAnalysis = useCallback((analysis: SavedAnalysis) => {
-    setViewingAnalysis(analysis);
-  }, []);
+  }, [setUserPrompt]);
 
   // Handle text area input to check for trigger characters
   const handleTextAreaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -465,6 +375,10 @@ export default function DriveAnalyzer() {
     if (lastChar === '@' || lastChar === '/') {
       setIsPromptCommandOpen(true);
     }
+  }, [setUserPrompt]);
+
+  const handleViewAnalysis = useCallback((analysis: SavedAnalysis) => {
+    setViewingAnalysis(analysis);
   }, []);
 
   return (
@@ -609,7 +523,9 @@ export default function DriveAnalyzer() {
                       onClearPastedText={handleClearPastedText}
                       onClearUrls={handleClearUrls}
                       currentUrlInput={currentUrlInput}
-                      onCurrentUrlInputChange={handleCurrentUrlInputChange}
+                      onCurrentUrlInputChange={setCurrentUrlInput}
+                      crawlingOptions={crawlingOptions}
+                      onCrawlingOptionsChange={handleCrawlingOptionsChange}
                     />
                   </CardContent>
                 </Card>

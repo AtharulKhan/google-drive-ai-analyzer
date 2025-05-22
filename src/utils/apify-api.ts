@@ -1,8 +1,16 @@
 
 import { toast } from 'sonner';
 
-// Using the website-content-crawler actor ID instead of page-analyzer
+// Using the website-content-crawler actor ID
 const ACTOR_NAME_OR_ID = 'apify~website-content-crawler';
+
+export interface ApifyCrawlingOptions {
+  maxCrawlDepth?: number;
+  maxCrawlPages?: number; 
+  maxResults?: number;
+  crawlerType?: string;
+  useSitemaps?: boolean;
+}
 
 interface ApifyActorInput {
   startUrls: Array<{ url: string }>;
@@ -12,10 +20,10 @@ interface ApifyActorInput {
   saveMarkdown?: boolean;
   maxResults?: number;
   maxCrawlPages?: number;
+  maxCrawlDepth?: number;
   proxyConfiguration?: {
     useApifyProxy?: boolean;
   };
-  // Additional options can be added as needed
 }
 
 interface ScrapedContentResult {
@@ -54,7 +62,10 @@ function formatDatasetItemsToText(items: any[]): string {
   return formattedText;
 }
 
-export async function analyzeUrlWithApify(url: string, keywords: string[] = []): Promise<ScrapedContentResult> {
+export async function analyzeUrlWithApify(
+  url: string, 
+  options: ApifyCrawlingOptions = {} // Default empty options object
+): Promise<ScrapedContentResult> {
   const apifyToken = localStorage.getItem('apifyApiToken');
 
   if (!apifyToken) {
@@ -65,15 +76,28 @@ export async function analyzeUrlWithApify(url: string, keywords: string[] = []):
   // Build the API URL for website-content-crawler
   const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_NAME_OR_ID}/run-sync-get-dataset-items?token=${apifyToken}`;
 
+  // Set default options
+  const defaultOptions = {
+    maxCrawlDepth: 0, // Default to crawling only the provided URL (no links)
+    maxCrawlPages: 1, // Default to crawling just 1 page
+    maxResults: 1, // Default to storing only 1 result
+    crawlerType: "playwright:firefox", // Default browser
+    useSitemaps: false // Default to not using sitemaps
+  };
+
+  // Merge default options with provided options
+  const mergedOptions = { ...defaultOptions, ...options };
+
   // Prepare the input according to website-content-crawler schema
   const input: ApifyActorInput = {
     startUrls: [{ url }],
-    useSitemaps: false,
+    useSitemaps: mergedOptions.useSitemaps,
     respectRobotsTxtFile: true,
-    crawlerType: "playwright:firefox", // Using firefox as default browser
+    crawlerType: mergedOptions.crawlerType,
     saveMarkdown: true,
-    maxResults: 50, // Limit results to avoid excessive processing
-    maxCrawlPages: 100, // Limit crawl pages 
+    maxResults: mergedOptions.maxResults,
+    maxCrawlPages: mergedOptions.maxCrawlPages,
+    maxCrawlDepth: mergedOptions.maxCrawlDepth,
     proxyConfiguration: { 
       useApifyProxy: true 
     }
@@ -116,14 +140,17 @@ export async function analyzeUrlWithApify(url: string, keywords: string[] = []):
 }
 
 // Function to analyze multiple URLs
-export async function analyzeMultipleUrlsWithApify(urls: string[]): Promise<{ combinedAnalyzedText: string; failedUrls: string[] }> {
+export async function analyzeMultipleUrlsWithApify(
+  urls: string[],
+  options: ApifyCrawlingOptions = {} // Default empty options object
+): Promise<{ combinedAnalyzedText: string; failedUrls: string[] }> {
   let combinedAnalyzedText = "";
   const failedUrls: string[] = [];
 
   // For multiple URLs, we'll process them sequentially to avoid overwhelming the API
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
-    const result = await analyzeUrlWithApify(url);
+    const result = await analyzeUrlWithApify(url, options);
     
     combinedAnalyzedText += `### Analysis for URL: ${url}\n\n`;
     if (result.error) {

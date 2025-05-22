@@ -6,8 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { X } from 'lucide-react';
+import { CrawlingOptions } from './CrawlingOptions';
+import { ApifyCrawlingOptions } from '@/utils/apify-api';
 
 interface TextUrlInputProps {
   pastedText: string;
@@ -19,6 +20,8 @@ interface TextUrlInputProps {
   onClearUrls: () => void;
   currentUrlInput: string;
   onCurrentUrlInputChange: (url: string) => void;
+  crawlingOptions: ApifyCrawlingOptions;
+  onCrawlingOptionsChange: (options: ApifyCrawlingOptions) => void;
 }
 
 export function TextUrlInput({
@@ -31,6 +34,8 @@ export function TextUrlInput({
   onClearUrls,
   currentUrlInput,
   onCurrentUrlInputChange,
+  crawlingOptions,
+  onCrawlingOptionsChange,
 }: TextUrlInputProps) {
   const handleAddUrl = () => {
     if (currentUrlInput.trim() !== '') {
@@ -114,6 +119,14 @@ export function TextUrlInput({
           </div>
         )}
       </div>
+      
+      {/* Crawling Options */}
+      {urls.length > 0 && (
+        <CrawlingOptions 
+          options={crawlingOptions} 
+          onChange={onCrawlingOptionsChange}
+        />
+      )}
     </div>
   );
 }
