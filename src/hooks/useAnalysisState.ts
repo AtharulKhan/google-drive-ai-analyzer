@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { ApifyCrawlingOptions } from '@/utils/apify-api';
 import { toast } from 'sonner';
@@ -44,12 +45,11 @@ export default function useAnalysisState() {
   const [urls, setUrls] = useState<string[]>([]);
   
   // Crawling options
-  // Updated defaults: maxCrawlPages = 10, maxResults = 10 (to match), depth = 1 to follow links
   const [crawlingOptions, setCrawlingOptions] = useState<ApifyCrawlingOptions>({
-    maxCrawlDepth: 1,
-    maxCrawlPages: 10,
-    maxResults: 10,
-    crawlerType: "cheerio", // Using cheerio for faster crawling of static content
+    maxCrawlDepth: 0,
+    maxCrawlPages: 1,
+    maxResults: 1,
+    crawlerType: "playwright:firefox",
     useSitemaps: false
   });
   
@@ -123,17 +123,8 @@ export default function useAnalysisState() {
   }, []);
 
   // Handle crawling options
-  const handleCrawlingOptionsChange = useCallback((newOptions: Partial<ApifyCrawlingOptions>) => {
-    setCrawlingOptions(prev => {
-      const updated = { ...prev, ...newOptions };
-      
-      // Always ensure maxResults is at least as large as maxCrawlPages
-      if (updated.maxResults && updated.maxCrawlPages && updated.maxResults < updated.maxCrawlPages) {
-        updated.maxResults = updated.maxCrawlPages;
-      }
-      
-      return updated;
-    });
+  const handleCrawlingOptionsChange = useCallback((newOptions: ApifyCrawlingOptions) => {
+    setCrawlingOptions(newOptions);
   }, []);
   
   // Handle text operations

@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface CrawlingOptionsProps {
   options: ApifyCrawlingOptions;
@@ -35,17 +34,10 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
     key: K, 
     value: ApifyCrawlingOptions[K]
   ) => {
-    // Create the update
-    const update = { [key]: value } as Partial<ApifyCrawlingOptions>;
-
-    // Special case: if we're updating maxCrawlPages, ensure maxResults is at least as large
-    if (key === 'maxCrawlPages' && typeof value === 'number') {
-      if (!options.maxResults || options.maxResults < value) {
-        update.maxResults = value;
-      }
-    }
-
-    onChange(update as any);
+    onChange({
+      ...options,
+      [key]: value
+    });
   };
 
   return (
@@ -110,7 +102,7 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Maximum number of pages to crawl and save content from
+                    Maximum number of pages to crawl in total
                   </p>
                 </div>
 
@@ -151,15 +143,6 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                   </Label>
                 </div>
               </div>
-
-              <Alert variant="default" className="bg-muted/50">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Browser-based crawling may have CORS limitations</AlertTitle>
-                <AlertDescription>
-                  Due to browser security restrictions, some websites may block API requests. 
-                  If crawling fails, try using the Raw HTTP (Cheerio) crawler for static sites.
-                </AlertDescription>
-              </Alert>
             </CardContent>
           </CollapsibleContent>
         </Collapsible>

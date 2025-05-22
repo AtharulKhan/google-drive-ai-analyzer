@@ -87,13 +87,6 @@ export async function analyzeUrlWithApify(
 
   // Merge default options with provided options
   const mergedOptions = { ...defaultOptions, ...options };
-  
-  // Make sure maxResults is at least equal to maxCrawlPages to save all crawled content
-  // This ensures we store results for every page we crawl
-  if (mergedOptions.maxResults < mergedOptions.maxCrawlPages) {
-    mergedOptions.maxResults = mergedOptions.maxCrawlPages;
-    console.log(`Automatically adjusted maxResults to match maxCrawlPages: ${mergedOptions.maxCrawlPages}`);
-  }
 
   // Prepare the input according to website-content-crawler schema
   const input: ApifyActorInput = {
@@ -109,9 +102,6 @@ export async function analyzeUrlWithApify(
       useApifyProxy: true 
     }
   };
-
-  console.log(`Analyzing URL with options:`, mergedOptions);
-  console.log(`Sending request to Apify for URL: ${url} with input:`, input);
 
   try {
     const response = await fetch(apiUrl, {
@@ -138,8 +128,6 @@ export async function analyzeUrlWithApify(
       return { analyzedText: "", failedUrl: url, error: "Unexpected response format from Apify."};
     }
 
-    console.log(`Received ${datasetItems.length} pages of content from Apify for URL: ${url}`);
-    
     const analyzedText = formatDatasetItemsToText(datasetItems);
     return { analyzedText, failedUrl: null };
 
