@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,8 +84,9 @@ export function SavedAnalysisDetailView({ analysis }: SavedAnalysisDetailViewPro
           </Button>
         </div>
         <ScrollArea className="h-72 mt-1 rounded-md border p-3">
-          {/* Using the Markdown component from src/components/ui/markdown.tsx */}
-          <Markdown content={analysis.aiOutput} id={`aiOutputDetail-${analysis.id}`} />
+          <div id={`aiOutputDetail-${analysis.id}`}>
+            <Markdown content={analysis.aiOutput} />
+          </div>
         </ScrollArea>
       </div>
     </div>
