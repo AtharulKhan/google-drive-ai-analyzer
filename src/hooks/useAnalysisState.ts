@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { ApifyCrawlingOptions } from '@/utils/apify-api';
 import { toast } from 'sonner';
@@ -122,9 +123,9 @@ export default function useAnalysisState() {
   }, []);
 
   // Handle crawling options
-  const handleCrawlingOptionsChange = useCallback((newOptions: ApifyCrawlingOptions) => {
+  const handleCrawlingOptionsChange = useCallback((newOptions: Partial<ApifyCrawlingOptions>) => {
     setCrawlingOptions(prev => {
-      // Ensure we don't overwrite options with undefined values
+      // Create a new object with the previous options
       const updatedOptions = { ...prev };
       
       // Only update properties that are explicitly set in newOptions

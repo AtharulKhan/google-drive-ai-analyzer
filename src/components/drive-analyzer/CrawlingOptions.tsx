@@ -61,7 +61,7 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
           </CardDescription>
           
           <CollapsibleContent>
-            <Alert variant="warning" className="mb-4 bg-amber-50 dark:bg-amber-900/20">
+            <Alert variant="destructive" className="mb-4 bg-amber-50 dark:bg-amber-900/20">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Due to browser limitations, web crawling directly from this application is limited. 
