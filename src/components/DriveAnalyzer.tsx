@@ -23,7 +23,8 @@ import { analyzeMultipleUrlsWithApify } from "@/utils/apify-api";
 import useAnalysisState, { 
   CUSTOM_INSTRUCTIONS_KEY,
   SAVED_PROMPTS_KEY,
-  SavedPrompt
+  SavedPrompt,
+  SavedAnalysis
 } from "@/hooks/useAnalysisState";
 
 // Import our components
@@ -31,7 +32,7 @@ import { FileList } from "./drive-analyzer/FileList";
 import { TextUrlInput } from "./drive-analyzer/TextUrlInput";
 import { SavedPrompts } from "./drive-analyzer/SavedPrompts";
 import { SavedAnalysesSidebar } from "./drive-analyzer/SavedAnalysesSidebar"; 
-import { SavedAnalysisDetailView } from "./drive-analyzer/SavedAnalysisDetailView";
+import { SavedAnalysisDetailView, SavedAnalysisSource } from "./drive-analyzer/SavedAnalysisDetailView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { History } from "lucide-react";
 import { PromptSelector } from "./drive-analyzer/PromptSelector";
