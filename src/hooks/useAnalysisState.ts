@@ -44,12 +44,12 @@ export default function useAnalysisState() {
   const [currentUrlInput, setCurrentUrlInput] = useState<string>("");
   const [urls, setUrls] = useState<string[]>([]);
   
-  // Crawling options
+  // Crawling options with better defaults
   const [crawlingOptions, setCrawlingOptions] = useState<ApifyCrawlingOptions>({
-    maxCrawlDepth: 0,
-    maxCrawlPages: 1,
-    maxResults: 1,
-    crawlerType: "playwright:firefox",
+    maxCrawlDepth: 1,     // Default to crawling direct links
+    maxCrawlPages: 10,    // Default to crawling max 10 pages
+    maxResults: 10,       // Default to storing max 10 results
+    crawlerType: "playwright:adaptive",
     useSitemaps: false
   });
   

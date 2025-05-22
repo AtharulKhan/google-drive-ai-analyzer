@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FormItem } from '@/components/ui/form';
 import { ApifyCrawlingOptions } from '@/utils/apify-api';
 import { 
   Card,
@@ -77,6 +76,7 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                       <SelectItem value="1">URL + direct links (1)</SelectItem>
                       <SelectItem value="2">Two levels deep (2)</SelectItem>
                       <SelectItem value="3">Three levels deep (3)</SelectItem>
+                      <SelectItem value="5">Five levels deep (5)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -99,6 +99,7 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                       <SelectItem value="10">10 pages</SelectItem>
                       <SelectItem value="20">20 pages</SelectItem>
                       <SelectItem value="50">50 pages</SelectItem>
+                      <SelectItem value="100">100 pages</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -107,16 +108,39 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                 </div>
 
                 <div>
+                  <Label htmlFor="max-results">Maximum Results</Label>
+                  <Select
+                    value={String(options.maxResults || 1)}
+                    onValueChange={(val) => handleOptionChange('maxResults', Number(val))}
+                  >
+                    <SelectTrigger id="max-results">
+                      <SelectValue placeholder="Select max results" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 result</SelectItem>
+                      <SelectItem value="5">5 results</SelectItem>
+                      <SelectItem value="10">10 results</SelectItem>
+                      <SelectItem value="20">20 results</SelectItem>
+                      <SelectItem value="50">50 results</SelectItem>
+                      <SelectItem value="100">100 results</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum number of pages to store as results
+                  </p>
+                </div>
+
+                <div>
                   <Label htmlFor="browser-type">Browser Type</Label>
                   <Select
-                    value={options.crawlerType || 'playwright:firefox'}
+                    value={options.crawlerType || 'playwright:adaptive'}
                     onValueChange={(val) => handleOptionChange('crawlerType', val)}
                   >
                     <SelectTrigger id="browser-type">
                       <SelectValue placeholder="Select browser" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="playwright:firefox">Firefox (Default)</SelectItem>
+                      <SelectItem value="playwright:firefox">Firefox</SelectItem>
                       <SelectItem value="playwright:chrome">Chrome</SelectItem>
                       <SelectItem value="playwright:adaptive">Adaptive (Auto-switching)</SelectItem>
                       <SelectItem value="cheerio">Raw HTTP (Fastest)</SelectItem>

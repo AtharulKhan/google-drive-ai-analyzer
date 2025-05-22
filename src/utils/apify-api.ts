@@ -1,8 +1,8 @@
 
 import { toast } from 'sonner';
 
-// Using the website-content-crawler actor ID
-const ACTOR_NAME_OR_ID = 'apify~website-content-crawler';
+// Using the website-content-crawler actor
+const ACTOR_ID = 'apify/website-content-crawler';
 
 export interface ApifyCrawlingOptions {
   maxCrawlDepth?: number;
@@ -24,6 +24,14 @@ interface ApifyActorInput {
   proxyConfiguration?: {
     useApifyProxy?: boolean;
   };
+  // Additional options for the website-content-crawler actor
+  includeUrlGlobs?: Array<{ glob: string }>;
+  excludeUrlGlobs?: Array<{ glob: string }>;
+  initialCookies?: any[];
+  keepUrlFragments?: boolean;
+  ignoreCanonicalUrl?: boolean;
+  removeElementsCssSelector?: string;
+  htmlTransformer?: string;
 }
 
 interface ScrapedContentResult {
@@ -43,8 +51,8 @@ function formatDatasetItemsToText(items: any[]): string {
     formattedText += `## Page ${index + 1}: ${item.url}\n\n`;
     
     // Add the title if available
-    if (item.title) {
-      formattedText += `### ${item.title}\n\n`;
+    if (item.metadata && item.metadata.title) {
+      formattedText += `### ${item.metadata.title}\n\n`;
     }
 
     // Add the markdown content if available (primary content format)
@@ -64,7 +72,7 @@ function formatDatasetItemsToText(items: any[]): string {
 
 export async function analyzeUrlWithApify(
   url: string, 
-  options: ApifyCrawlingOptions = {} // Default empty options object
+  options: ApifyCrawlingOptions = {}
 ): Promise<ScrapedContentResult> {
   const apifyToken = localStorage.getItem('apifyApiToken');
 
@@ -74,19 +82,22 @@ export async function analyzeUrlWithApify(
   }
 
   // Build the API URL for website-content-crawler
-  const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_NAME_OR_ID}/run-sync-get-dataset-items?token=${apifyToken}`;
+  const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items?token=${apifyToken}`;
 
   // Set default options
   const defaultOptions = {
     maxCrawlDepth: 0, // Default to crawling only the provided URL (no links)
     maxCrawlPages: 1, // Default to crawling just 1 page
     maxResults: 1, // Default to storing only 1 result
-    crawlerType: "playwright:firefox", // Default browser
-    useSitemaps: false // Default to not using sitemaps
+    crawlerType: "playwright:adaptive", // Default browser
+    useSitemaps: false, // Default to not using sitemaps
+    htmlTransformer: "readableText" // Default HTML transformer
   };
 
   // Merge default options with provided options
   const mergedOptions = { ...defaultOptions, ...options };
+
+  console.log("Analyzing URL with options:", mergedOptions);
 
   // Prepare the input according to website-content-crawler schema
   const input: ApifyActorInput = {
@@ -100,10 +111,21 @@ export async function analyzeUrlWithApify(
     maxCrawlDepth: mergedOptions.maxCrawlDepth,
     proxyConfiguration: { 
       useApifyProxy: true 
-    }
+    },
+    // Set additional needed options
+    htmlTransformer: "readableText",
+    removeElementsCssSelector: `nav, footer, script, style, noscript, svg, img[src^='data:'],
+      [role="alert"],
+      [role="banner"],
+      [role="dialog"],
+      [role="alertdialog"],
+      [role="region"][aria-label*="skip" i],
+      [aria-modal="true"]`
   };
 
   try {
+    console.log(`Sending request to Apify for URL: ${url} with input:`, JSON.stringify(input, null, 2));
+    
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -121,6 +143,7 @@ export async function analyzeUrlWithApify(
     }
 
     const datasetItems = await response.json();
+    console.log(`Received ${datasetItems.length} items from Apify for URL: ${url}`);
     
     if (!Array.isArray(datasetItems)) {
       console.error(`Unexpected response format from Apify for ${url}:`, datasetItems);
@@ -150,6 +173,10 @@ export async function analyzeMultipleUrlsWithApify(
   // For multiple URLs, we'll process them sequentially to avoid overwhelming the API
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
+    
+    // Add progress notification
+    toast.info(`Processing URL ${i + 1} of ${urls.length}: ${url}`);
+    
     const result = await analyzeUrlWithApify(url, options);
     
     combinedAnalyzedText += `### Analysis for URL: ${url}\n\n`;
