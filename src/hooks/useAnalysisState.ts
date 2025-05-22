@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { ApifyCrawlingOptions } from '@/utils/apify-api';
 import { toast } from 'sonner';
@@ -44,13 +45,14 @@ export default function useAnalysisState() {
   const [urls, setUrls] = useState<string[]>([]);
   
   // Crawling options
-  // Updated defaults: maxCrawlPages = 10, maxResults = 10 (to match), depth = 1 to follow links
   const [crawlingOptions, setCrawlingOptions] = useState<ApifyCrawlingOptions>({
     maxCrawlDepth: 1,
     maxCrawlPages: 10,
     maxResults: 10,
     crawlerType: "cheerio", // Using cheerio for faster crawling of static content
-    useSitemaps: false
+    useSitemaps: false,
+    includeIndirectLinks: false,
+    maxIndirectLinks: 5
   });
   
   // Prompts and analysis state
@@ -130,6 +132,14 @@ export default function useAnalysisState() {
       // Always ensure maxResults is at least as large as maxCrawlPages
       if (updated.maxResults && updated.maxCrawlPages && updated.maxResults < updated.maxCrawlPages) {
         updated.maxResults = updated.maxCrawlPages;
+      }
+      
+      // If including indirect links, also consider that in maxResults
+      if (updated.includeIndirectLinks && updated.maxIndirectLinks && updated.maxCrawlPages) {
+        const totalPages = updated.maxCrawlPages + updated.maxIndirectLinks;
+        if (updated.maxResults && updated.maxResults < totalPages) {
+          updated.maxResults = totalPages;
+        }
       }
       
       return updated;

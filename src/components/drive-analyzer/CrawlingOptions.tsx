@@ -117,42 +117,83 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                 <div>
                   <Label htmlFor="browser-type">Browser Type</Label>
                   <Select
-                    value={options.crawlerType || 'playwright:firefox'}
+                    value={options.crawlerType || 'cheerio'}
                     onValueChange={(val) => handleOptionChange('crawlerType', val)}
                   >
                     <SelectTrigger id="browser-type">
                       <SelectValue placeholder="Select browser" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="playwright:firefox">Firefox (Default)</SelectItem>
+                      <SelectItem value="cheerio">Raw HTTP (Fastest)</SelectItem>
+                      <SelectItem value="playwright:firefox">Firefox</SelectItem>
                       <SelectItem value="playwright:chrome">Chrome</SelectItem>
                       <SelectItem value="playwright:adaptive">Adaptive (Auto-switching)</SelectItem>
-                      <SelectItem value="cheerio">Raw HTTP (Fastest)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
                     Browser engine to use for crawling
                   </p>
                 </div>
-
-                <div className="flex items-center space-x-2 pt-6">
-                  <Checkbox
-                    id="use-sitemaps"
-                    checked={options.useSitemaps || false}
-                    onCheckedChange={(checked) => 
-                      handleOptionChange('useSitemaps', checked === true)
-                    }
-                  />
-                  <Label 
-                    htmlFor="use-sitemaps"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Use website sitemaps
-                  </Label>
+                
+                <div>
+                  <div className="flex items-center space-x-2 pt-1">
+                    <Checkbox
+                      id="use-sitemaps"
+                      checked={options.useSitemaps || false}
+                      onCheckedChange={(checked) => 
+                        handleOptionChange('useSitemaps', checked === true)
+                      }
+                    />
+                    <Label 
+                      htmlFor="use-sitemaps"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Use website sitemaps
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 pt-4">
+                    <Checkbox
+                      id="include-indirect-links"
+                      checked={options.includeIndirectLinks || false}
+                      onCheckedChange={(checked) => 
+                        handleOptionChange('includeIndirectLinks', checked === true)
+                      }
+                    />
+                    <Label 
+                      htmlFor="include-indirect-links"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Include indirect links
+                    </Label>
+                  </div>
                 </div>
+                
+                {options.includeIndirectLinks && (
+                  <div>
+                    <Label htmlFor="max-indirect-links">Max Indirect Links</Label>
+                    <Select
+                      value={String(options.maxIndirectLinks || 5)}
+                      onValueChange={(val) => handleOptionChange('maxIndirectLinks', Number(val))}
+                    >
+                      <SelectTrigger id="max-indirect-links">
+                        <SelectValue placeholder="Select max indirect links" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 links</SelectItem>
+                        <SelectItem value="10">10 links</SelectItem>
+                        <SelectItem value="20">20 links</SelectItem>
+                        <SelectItem value="50">50 links</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Maximum number of indirect links to crawl
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <Alert variant="default" className="bg-muted/50">
+              <Alert variant="destructive" className="bg-muted/50">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Browser-based crawling may have CORS limitations</AlertTitle>
                 <AlertDescription>

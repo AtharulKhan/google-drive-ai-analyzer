@@ -10,6 +10,8 @@ export interface ApifyCrawlingOptions {
   maxResults?: number;
   crawlerType?: string;
   useSitemaps?: boolean;
+  includeIndirectLinks?: boolean;
+  maxIndirectLinks?: number;
 }
 
 interface ApifyActorInput {
@@ -24,6 +26,8 @@ interface ApifyActorInput {
   proxyConfiguration?: {
     useApifyProxy?: boolean;
   };
+  pseudoUrls?: Array<{ purl: string }>;
+  linkSelector?: string;
 }
 
 interface ScrapedContentResult {
@@ -81,8 +85,10 @@ export async function analyzeUrlWithApify(
     maxCrawlDepth: 0, // Default to crawling only the provided URL (no links)
     maxCrawlPages: 1, // Default to crawling just 1 page
     maxResults: 1, // Default to storing only 1 result
-    crawlerType: "playwright:firefox", // Default browser
-    useSitemaps: false // Default to not using sitemaps
+    crawlerType: "cheerio", // Default to faster raw HTTP crawler
+    useSitemaps: false, // Default to not using sitemaps
+    includeIndirectLinks: false, // Default to not following indirect links
+    maxIndirectLinks: 5 // Default limit for indirect links if enabled
   };
 
   // Merge default options with provided options
@@ -93,6 +99,15 @@ export async function analyzeUrlWithApify(
   if (mergedOptions.maxResults < mergedOptions.maxCrawlPages) {
     mergedOptions.maxResults = mergedOptions.maxCrawlPages;
     console.log(`Automatically adjusted maxResults to match maxCrawlPages: ${mergedOptions.maxCrawlPages}`);
+  }
+
+  // If including indirect links, adjust maxCrawlPages and maxResults accordingly
+  if (mergedOptions.includeIndirectLinks && mergedOptions.maxIndirectLinks) {
+    const totalPages = mergedOptions.maxCrawlPages + mergedOptions.maxIndirectLinks;
+    if (mergedOptions.maxResults < totalPages) {
+      mergedOptions.maxResults = totalPages;
+      console.log(`Adjusted maxResults to accommodate indirect links: ${mergedOptions.maxResults}`);
+    }
   }
 
   // Prepare the input according to website-content-crawler schema
@@ -109,6 +124,14 @@ export async function analyzeUrlWithApify(
       useApifyProxy: true 
     }
   };
+
+  // Add pseudo URLs for indirect links if enabled
+  if (mergedOptions.includeIndirectLinks) {
+    // This will match any URL from the same domain
+    input.pseudoUrls = [{ purl: `[https?://([^/]+${new URL(url).hostname.replace(/\./g, '\\.')}|${new URL(url).hostname.replace(/\./g, '\\.')})[/]?.*]` }];
+    // Include a general link selector to capture more links
+    input.linkSelector = "a[href]";
+  }
 
   console.log(`Analyzing URL with options:`, mergedOptions);
   console.log(`Sending request to Apify for URL: ${url} with input:`, input);
