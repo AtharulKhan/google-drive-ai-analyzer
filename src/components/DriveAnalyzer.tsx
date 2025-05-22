@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -503,6 +502,8 @@ export default function DriveAnalyzer() {
                   displayFiles={displayFiles}
                   onRemoveFile={handleRemoveFile}
                   onClearFiles={handleClearFiles}
+                  selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
+                  savedAnalyses={savedAnalyses}
                 />
 
                 <Separator className="my-6" />
