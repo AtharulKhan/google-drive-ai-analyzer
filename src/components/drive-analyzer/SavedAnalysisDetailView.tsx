@@ -1,119 +1,92 @@
-
 import React from 'react';
-import { SavedAnalysis } from '@/components/DriveAnalyzer';
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { downloadAsPdf } from "@/utils/pdf-generator";
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Markdown } from '@/components/ui/markdown'; // Using the existing Markdown component
+import { toast } from 'sonner';
+import { Copy } from 'lucide-react';
 
-interface MarkdownProps {
-  content: string; 
+// Conceptual - for prop definition, will be moved to a shared types file later
+export interface SavedAnalysisSource {
+  type: 'file' | 'url' | 'text';
+  name: string;
 }
-
-// Simple Markdown component that renders line breaks
-function Markdown({ content }: MarkdownProps) {
-  return (
-    <div className="prose dark:prose-invert max-w-none p-4">
-      {content.split('\n').map((line, i) => (
-        <React.Fragment key={i}>
-          {line}
-          <br />
-        </React.Fragment>
-      ))}
-    </div>
-  );
+export interface SavedAnalysis {
+  id: string;
+  title: string;
+  timestamp: number;
+  prompt: string;
+  aiOutput: string;
+  sources: SavedAnalysisSource[];
 }
 
 interface SavedAnalysisDetailViewProps {
-  analysis: SavedAnalysis;
+  analysis: SavedAnalysis | null;
 }
 
 export function SavedAnalysisDetailView({ analysis }: SavedAnalysisDetailViewProps) {
-  const handleCopyContent = (content: string, type: string) => {
-    navigator.clipboard.writeText(content);
-    toast.success(`${type} copied to clipboard`);
-  };
+  if (!analysis) {
+    return null;
+  }
 
-  const handleDownloadPdf = async () => {
-    try {
-      toast.info("Preparing PDF download...");
-      await downloadAsPdf(analysis.aiOutput, `analysis-${analysis.id}`);
-      toast.success("PDF downloaded successfully");
-    } catch (error) {
-      console.error("PDF download error:", error);
-      toast.error(`Failed to download PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+  const handleCopyOutput = () => {
+    navigator.clipboard.writeText(analysis.aiOutput)
+      .then(() => toast.success("AI output copied to clipboard!"))
+      .catch(err => {
+        console.error("Failed to copy output: ", err);
+        toast.error("Failed to copy output. Please try again.");
+      });
   };
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-6">
-        <div className="mb-4 flex flex-wrap gap-2">
-          <h3 className="text-lg font-medium mr-2">Created:</h3>
-          <span className="text-muted-foreground">
-            {new Date(analysis.timestamp).toLocaleString()}
-          </span>
-        </div>
-        
-        <div className="mb-4">
-          <h3 className="text-lg font-medium mb-2">Sources:</h3>
-          <div className="flex flex-wrap gap-2">
-            {analysis.sources.map((source, index) => (
-              <Badge key={index} variant="outline" className="flex items-center gap-1">
-                {source.type === 'file' && "📄"}
-                {source.type === 'url' && "🌐"}
-                {source.type === 'text' && "📝"}
-                {source.name}
+    <div className="space-y-4 pt-2 pb-4 pr-1"> {/* Adjusted padding for dialog content */}
+      <h3 className="text-xl font-semibold tracking-tight">{analysis.title}</h3>
+      
+      <div className="text-xs text-muted-foreground">
+        Saved on: {new Date(analysis.timestamp).toLocaleString()}
+      </div>
+      
+      <div>
+        <Label className="text-sm font-medium">Sources:</Label>
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {analysis.sources.length > 0 ? (
+            analysis.sources.map((source, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {source.type === 'text' ? 'Pasted Text' : source.name}
               </Badge>
-            ))}
-          </div>
+            ))
+          ) : (
+            <p className="text-xs text-muted-foreground">No sources recorded.</p>
+          )}
         </div>
-        
-        <Tabs defaultValue="output" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="output">AI Output</TabsTrigger>
-            <TabsTrigger value="prompt">Prompt</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="output">
-            <div className="relative">
-              <div className="absolute top-2 right-2 z-10 flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => handleCopyContent(analysis.aiOutput, "Output")}>
-                  <Copy className="h-4 w-4 mr-1" />
-                  Copy
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleDownloadPdf}>
-                  <Download className="h-4 w-4 mr-1" />
-                  PDF
-                </Button>
-              </div>
-              <ScrollArea className="border rounded-md h-[400px] mt-2">
-                <Markdown content={analysis.aiOutput} />
-              </ScrollArea>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="prompt">
-            <div className="relative">
-              <div className="absolute top-2 right-2 z-10">
-                <Button size="sm" variant="outline" onClick={() => handleCopyContent(analysis.prompt, "Prompt")}>
-                  <Copy className="h-4 w-4 mr-1" />
-                  Copy
-                </Button>
-              </div>
-              <ScrollArea className="border rounded-md h-[400px] mt-2">
-                <div className="p-4 whitespace-pre-wrap">
-                  {analysis.prompt}
-                </div>
-              </ScrollArea>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+      </div>
+
+      <Separator />
+
+      <div>
+        <Label htmlFor={`promptDetail-${analysis.id}`} className="text-sm font-medium">Original Prompt:</Label>
+        <ScrollArea className="h-36 mt-1.5 rounded-md border bg-muted/30 p-3">
+          <pre id={`promptDetail-${analysis.id}`} className="text-sm whitespace-pre-wrap font-sans">
+            {analysis.prompt}
+          </pre>
+        </ScrollArea>
+      </div>
+      
+      <div>
+        <div className="flex justify-between items-center mb-1.5">
+          <Label htmlFor={`aiOutputDetail-${analysis.id}`} className="text-sm font-medium">AI Output:</Label>
+          <Button variant="ghost" size="sm" onClick={handleCopyOutput}>
+            <Copy className="mr-1.5 h-3.5 w-3.5" />
+            Copy Output
+          </Button>
+        </div>
+        <ScrollArea className="h-72 mt-1 rounded-md border p-3">
+          {/* Using the Markdown component from src/components/ui/markdown.tsx */}
+          <Markdown content={analysis.aiOutput} id={`aiOutputDetail-${analysis.id}`} />
+        </ScrollArea>
+      </div>
+    </div>
   );
 }

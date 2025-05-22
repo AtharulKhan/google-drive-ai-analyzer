@@ -1,4 +1,3 @@
-
 export interface ScrapedContentResult {
   combinedText: string;
   failedUrls: string[];
@@ -24,75 +23,105 @@ export async function scrapeUrls(urls: string[]): Promise<ScrapedContentResult> 
   let combinedText = "";
   const failedUrls: string[] = [];
 
-  // Message explaining CORS limitations
-  combinedText = "## Web Scraping Limitations\n\n";
-  combinedText += "Direct web scraping from browsers is limited due to CORS security policies. ";
-  combinedText += "Most websites block direct access from other domains for security reasons.\n\n";
-  combinedText += "**Attempted URLs:**\n\n";
-  
-  urls.forEach(url => {
-    combinedText += `- ${url}\n`;
-  });
-  
-  combinedText += "\n## Alternative Approaches:\n\n";
-  combinedText += "1. **Directly paste content** from these websites into the text input area\n";
-  combinedText += "2. **Use Google Docs** to store web content and then analyze through Google Drive integration\n";
-  combinedText += "3. **For production environments:** Set up a server-side proxy to handle these requests\n\n";
-
-  // Try using the fetch API directly for informational purposes
-  // but we know it will likely fail due to CORS
   for (const url of urls) {
+    let outputForUrl = `### Content from URL: ${url}\n\n`;
+
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
-      const response = await fetch(url, { 
-        signal: controller.signal,
-        mode: 'cors', // Try with CORS mode
-        headers: {
-          'Accept': 'text/html',
-          'User-Agent': 'Mozilla/5.0 (compatible; WebAppScraper/1.0)'
-        }
-      });
-      
-      clearTimeout(timeoutId);
-      
+      const response = await fetch(url);
+
       if (response.ok) {
         const html = await response.text();
-        combinedText += `\n### Content successfully retrieved from: ${url}\n\n`;
-        
-        // Extract basic information from the HTML
+
+        // 1. Extract Page Title
         const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
         const title = titleMatch ? cleanText(titleMatch[1]) : "";
         if (title) {
-          combinedText += `Page Title: ${title}\n\n`;
+          outputForUrl += `Page Title: ${title}\n`;
+        }
+
+        // 2. Extract Meta Description
+        const metaDescriptionMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["'][^>]*>/i);
+        const metaDescription = metaDescriptionMatch ? cleanText(metaDescriptionMatch[1]) : "";
+        if (metaDescription) {
+          outputForUrl += `Meta Description: ${metaDescription}\n`;
         }
         
-        // Add a small preview (limited to avoid overwhelming the UI)
-        const textPreview = cleanText(html).substring(0, 500);
-        combinedText += `Content Preview: ${textPreview}...\n\n`;
+        if (title || metaDescription) {
+            outputForUrl += "\n"; // Add a newline if we had a title or description
+        }
+
+        // 3. Isolate Main Content Block
+        let mainContentHtml = "";
+        const mainMatch = html.match(/<main[\s\S]*?<\/main>/i);
+        if (mainMatch) {
+          mainContentHtml = mainMatch[0];
+        } else {
+          const articleMatch = html.match(/<article[\s\S]*?<\/article>/i);
+          if (articleMatch) {
+            mainContentHtml = articleMatch[0];
+          } else {
+            const bodyMatch = html.match(/<body[\s\S]*?<\/body>/i);
+            if (bodyMatch) {
+              mainContentHtml = bodyMatch[0];
+            } else {
+              mainContentHtml = html; // Fallback to full HTML
+            }
+          }
+        }
         
+        // 4. Clean Main Content Block (Iterative Refinement)
+        let cleanedContentBlock = mainContentHtml;
+        cleanedContentBlock = cleanedContentBlock.replace(/<header[\s\S]*?<\/header>/gi, '');
+        cleanedContentBlock = cleanedContentBlock.replace(/<nav[\s\S]*?<\/nav>/gi, '');
+        cleanedContentBlock = cleanedContentBlock.replace(/<footer[\s\S]*?<\/footer>/gi, '');
+        cleanedContentBlock = cleanedContentBlock.replace(/<script[\s\S]*?<\/script>/gi, '');
+        cleanedContentBlock = cleanedContentBlock.replace(/<style[\s\S]*?<\/style>/gi, '');
+        cleanedContentBlock = cleanedContentBlock.replace(/<!--[\s\S]*?-->/g, '');
+        // Remove aside sections as they are often sidebars/less relevant
+        cleanedContentBlock = cleanedContentBlock.replace(/<aside[\s\S]*?<\/aside>/gi, '');
+
+
+        // 5. Extract Headings (from the cleaned main content block)
+        const h1Match = cleanedContentBlock.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+        const h1Text = h1Match ? cleanText(h1Match[1]) : "";
+        if (h1Text) {
+          outputForUrl += `H1: ${h1Text}\n\n`;
+        }
+
+        const h2Matches = Array.from(cleanedContentBlock.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi));
+        const h2Texts = h2Matches.map(match => cleanText(match[1])).filter(text => text);
+        if (h2Texts.length > 0) {
+          outputForUrl += "H2 Headings:\n";
+          h2Texts.forEach(h => outputForUrl += `- ${h}\n`);
+          outputForUrl += "\n";
+        }
+
+        const h3Matches = Array.from(cleanedContentBlock.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi));
+        const h3Texts = h3Matches.map(match => cleanText(match[1])).filter(text => text);
+        if (h3Texts.length > 0) {
+          outputForUrl += "H3 Headings:\n";
+          h3Texts.forEach(h => outputForUrl += `- ${h}\n`);
+          outputForUrl += "\n";
+        }
+
+        // 6. Process Final Body Content
+        let processedBodyText = cleanText(cleanedContentBlock); // Apply cleanText to the already refined block
+        if (processedBodyText.length > MAX_CONTENT_LENGTH) {
+          processedBodyText = processedBodyText.substring(0, MAX_CONTENT_LENGTH) + "... (truncated)";
+        }
+        outputForUrl += `Main Content:\n${processedBodyText}\n\n`;
+
       } else {
+        console.error(`Failed to scrape ${url}: HTTP status ${response.status}`);
         failedUrls.push(url);
-        combinedText += `\n### Failed to access: ${url}\n`;
-        combinedText += `HTTP Status: ${response.status} ${response.statusText}\n\n`;
+        outputForUrl += `(Failed to scrape: HTTP status ${response.status})\n\n`;
       }
     } catch (error) {
       console.error(`Failed to scrape ${url}: `, error);
       failedUrls.push(url);
-      
-      // Provide more specific error messaging
-      if (error instanceof TypeError && error.message.includes('NetworkError')) {
-        combinedText += `\n### Failed to access: ${url}\n`;
-        combinedText += `Error: CORS policy blocked access. This is expected behavior for most websites.\n\n`;
-      } else if (error.name === 'AbortError') {
-        combinedText += `\n### Failed to access: ${url}\n`;
-        combinedText += `Error: Request timed out after 5 seconds.\n\n`;
-      } else {
-        combinedText += `\n### Failed to access: ${url}\n`;
-        combinedText += `Error: ${error instanceof Error ? error.message : "Unknown error"}\n\n`;
-      }
+      outputForUrl += `(Failed to scrape: ${error instanceof Error ? error.message : "Unknown error"})\n\n`;
     }
+    combinedText += outputForUrl;
   }
 
   return { combinedText, failedUrls };
