@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Edit2, Trash2, Eye, XCircle } from 'lucide-react';
 
 // Conceptual - for prop definition, will be moved to a shared types file later
@@ -47,6 +48,8 @@ interface SavedAnalysesSidebarProps {
   onRenameAnalysis: (id: string, newTitle: string) => void;
   onDeleteAnalysis: (id: string) => void;
   onDeleteAllAnalyses: () => void;
+  selectedAnalysisIdsForPrompt: string[];
+  toggleAnalysisSelectionForPrompt: (analysisId: string) => void;
 }
 
 export function SavedAnalysesSidebar({
@@ -57,6 +60,8 @@ export function SavedAnalysesSidebar({
   onRenameAnalysis,
   onDeleteAnalysis,
   onDeleteAllAnalyses,
+  selectedAnalysisIdsForPrompt,
+  toggleAnalysisSelectionForPrompt,
 }: SavedAnalysesSidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [newTitleInput, setNewTitleInput] = useState<string>('');
@@ -142,8 +147,15 @@ export function SavedAnalysesSidebar({
                       </div>
                     ) : (
                       <CardTitle className="text-lg flex justify-between items-start">
-                        <span>{analysis.title}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleStartRename(analysis)}>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`select-analysis-${analysis.id}`}
+                            checked={selectedAnalysisIdsForPrompt.includes(analysis.id)}
+                            onCheckedChange={() => toggleAnalysisSelectionForPrompt(analysis.id)}
+                          />
+                          <label htmlFor={`select-analysis-${analysis.id}`} className="cursor-pointer">{analysis.title}</label>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => handleStartRename(analysis)}>
                           <Edit2 className="h-4 w-4" />
                         </Button>
                       </CardTitle>

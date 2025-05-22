@@ -60,6 +60,7 @@ export default function useAnalysisState() {
   const [aiOutput, setAiOutput] = useState("");
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
+  const [selectedAnalysisIdsForPrompt, setSelectedAnalysisIdsForPrompt] = useState<string[]>([]);
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>({
     isProcessing: false,
     currentStep: "",
@@ -191,6 +192,15 @@ export default function useAnalysisState() {
     toast.success("All saved analyses have been deleted!");
   }, []);
 
+  // Handle selection of saved analyses for prompt
+  const toggleAnalysisSelectionForPrompt = useCallback((analysisId: string) => {
+    setSelectedAnalysisIdsForPrompt(prevSelectedIds =>
+      prevSelectedIds.includes(analysisId)
+        ? prevSelectedIds.filter(id => id !== analysisId)
+        : [...prevSelectedIds, analysisId]
+    );
+  }, []);
+
   return {
     // Files
     selectedFiles,
@@ -237,5 +247,7 @@ export default function useAnalysisState() {
     handleRenameAnalysis,
     handleDeleteAnalysis,
     handleDeleteAllAnalyses,
+    selectedAnalysisIdsForPrompt,
+    toggleAnalysisSelectionForPrompt,
   };
 }

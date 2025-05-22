@@ -87,6 +87,8 @@ export default function DriveAnalyzer() {
     handleRenameAnalysis,
     handleDeleteAnalysis,
     handleDeleteAllAnalyses,
+    selectedAnalysisIdsForPrompt,
+    toggleAnalysisSelectionForPrompt,
   } = useAnalysisState();
 
   // State variables
@@ -262,9 +264,28 @@ export default function DriveAnalyzer() {
       }));
       
       // Call OpenRouter API with custom instructions if provided
+      // Integrate selected saved analyses into the prompt
+      let finalUserPrompt = userPrompt;
+      if (selectedAnalysisIdsForPrompt.length > 0) {
+        const selectedAnalyses = savedAnalyses.filter(analysis => 
+          selectedAnalysisIdsForPrompt.includes(analysis.id)
+        );
+
+        if (selectedAnalyses.length > 0) {
+          let includedAnalysesContent = "\n\n=== START OF INCLUDED SAVED ANALYSES ===\n\n";
+          selectedAnalyses.forEach(analysis => {
+            includedAnalysesContent += `--- Analysis: ${analysis.title} ---\n\n`;
+            includedAnalysesContent += `${analysis.aiOutput}\n\n`;
+            includedAnalysesContent += `--- END OF Analysis: ${analysis.title} ---\n\n`;
+          });
+          includedAnalysesContent += "=== END OF INCLUDED SAVED ANALYSES ===\n\n";
+          finalUserPrompt = includedAnalysesContent + userPrompt;
+        }
+      }
+      
       const finalPrompt = customInstructions 
-        ? `${customInstructions}\n\n${userPrompt}`
-        : userPrompt;
+        ? `${customInstructions}\n\n${finalUserPrompt}`
+        : finalUserPrompt;
         
       const result = await analyzeWithOpenRouter(combinedContent, finalPrompt, {
         model: aiModel,
@@ -293,12 +314,17 @@ export default function DriveAnalyzer() {
         id: currentTimestamp.toString(),
         title: `Analysis - ${new Date(currentTimestamp).toLocaleString()}`,
         timestamp: currentTimestamp,
-        prompt: finalPrompt,
+        prompt: userPrompt, // Save the original user prompt, not the augmented one
         aiOutput: result,
         sources: analysisSources,
       };
 
       handleSaveAnalysis(newAnalysis);
+      
+      // Clear selected analyses for prompt after use
+      if (selectedAnalysisIdsForPrompt.length > 0) {
+        selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id)); // This will clear the array
+      }
 
       // Reset processing state after a short delay
       setTimeout(() => {
@@ -578,6 +604,8 @@ export default function DriveAnalyzer() {
         onRenameAnalysis={handleRenameAnalysis}
         onDeleteAnalysis={handleDeleteAnalysis}
         onDeleteAllAnalyses={handleDeleteAllAnalyses}
+        selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
+        toggleAnalysisSelectionForPrompt={toggleAnalysisSelectionForPrompt}
       />
 
       {viewingAnalysis && (
