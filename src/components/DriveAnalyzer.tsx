@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -462,6 +463,7 @@ export default function DriveAnalyzer() {
     // toast.info(`Viewing analysis: ${analysis.title}`); 
   }, []);
 
+
   // Handle text area input to check for trigger characters
   const handleTextAreaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -475,15 +477,15 @@ export default function DriveAnalyzer() {
   }, []);
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-6xl">
+    <div className="container mx-auto p-4 max-w-6xl">
       <Card className="w-full shadow-lg">
-        <CardHeader className="px-3 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xl sm:text-2xl">
+              <CardTitle className="text-2xl">
                 Google Drive AI Analyzer
               </CardTitle>
-              <CardDescription className="text-sm">
+              <CardDescription>
                 Select documents from Google Drive and analyze them with AI
               </CardDescription>
             </div>
@@ -532,7 +534,7 @@ export default function DriveAnalyzer() {
           </div>
         </CardHeader>
 
-        <CardContent className="px-3 sm:px-6">
+        <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-2 mb-4">
               <TabsTrigger value="files">Files & Settings</TabsTrigger>
@@ -632,7 +634,7 @@ export default function DriveAnalyzer() {
           </Tabs>
         </CardContent>
 
-        <CardFooter className="flex flex-col sm:flex-row gap-4 justify-end border-t p-3 sm:p-4">
+        <CardFooter className="flex flex-col sm:flex-row gap-4 justify-end border-t p-4">
           <Button
             onClick={handleRunAnalysis}
             disabled={
