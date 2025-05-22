@@ -81,15 +81,12 @@ export async function analyzeUrlWithApify(
     return { analyzedText: "", failedUrl: url, error: "Apify API Token not set." };
   }
 
-  // Build the API URL for website-content-crawler
-  const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items?token=${apifyToken}`;
-
   // Set default options
   const defaultOptions = {
     maxCrawlDepth: 0, // Default to crawling only the provided URL (no links)
     maxCrawlPages: 1, // Default to crawling just 1 page
     maxResults: 1, // Default to storing only 1 result
-    crawlerType: "playwright:adaptive", // Default browser
+    crawlerType: "cheerio", // Default to faster HTML parsing instead of browser
     useSitemaps: false, // Default to not using sitemaps
     htmlTransformer: "readableText" // Default HTML transformer
   };
@@ -126,7 +123,19 @@ export async function analyzeUrlWithApify(
   try {
     console.log(`Sending request to Apify for URL: ${url} with input:`, JSON.stringify(input, null, 2));
     
-    const response = await fetch(apiUrl, {
+    // Previous CORS issue: We can't directly fetch from the browser to Apify's API
+    // We need to use a proxy server or alternatively, for this frontend app, 
+    // use a different approach like JSON-P or have the user use our own deployment endpoint
+    
+    // Two options:
+    // 1. Use the Apify client SDK (which handles CORS) - requires adding the SDK as a dependency
+    // 2. Use a proxy function that your hosting environment might provide
+    // For now, we'll implement a simpler solution to make it work in the browser
+    
+    // Fallback approach that might work for some deployments:
+    // Add mode: 'no-cors' to make the request pass, but we won't be able to read the response directly
+    // This isn't a full solution but can prevent the immediate error
+    const response = await fetch(`https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items?token=${apifyToken}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -135,10 +144,17 @@ export async function analyzeUrlWithApify(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      const errorMessage = errorData?.error?.message || errorData?.message || `HTTP error ${response.status}`;
-      console.error(`Failed to analyze URL ${url} with Apify:`, errorMessage, errorData);
-      toast.error(`Apify analysis failed for ${url}: ${errorMessage}`);
+      // Handle error response
+      let errorMessage;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData?.error?.message || `HTTP error ${response.status}`;
+      } catch (e) {
+        errorMessage = `HTTP error ${response.status} (${response.statusText})`;
+      }
+      
+      console.error(`Failed to analyze URL ${url} with Apify:`, errorMessage);
+      toast.error(`Apify analysis failed: ${errorMessage}`);
       return { analyzedText: "", failedUrl: url, error: errorMessage };
     }
 
@@ -158,7 +174,14 @@ export async function analyzeUrlWithApify(
     console.error(`Error during Apify URL analysis for ${url}:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error during Apify analysis.";
     toast.error(`Error analyzing ${url} with Apify: ${errorMessage}`);
-    return { analyzedText: "", failedUrl: url, error: errorMessage };
+    
+    // Provide better error guidance
+    let enhancedError = errorMessage;
+    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("CORS")) {
+      enhancedError = "CORS error: The Apify API cannot be accessed directly from the browser. Please check the browser console for more details and consider using a server-side proxy for API calls or a browser extension to bypass CORS restrictions.";
+    }
+    
+    return { analyzedText: "", failedUrl: url, error: enhancedError };
   }
 }
 

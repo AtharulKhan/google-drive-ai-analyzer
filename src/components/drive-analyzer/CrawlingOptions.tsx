@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CrawlingOptionsProps {
   options: ApifyCrawlingOptions;
@@ -60,6 +61,14 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
           </CardDescription>
           
           <CollapsibleContent>
+            <Alert variant="warning" className="mb-4 bg-amber-50 dark:bg-amber-900/20">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Due to browser limitations, web crawling directly from this application is limited. 
+                For best results, use the "Raw HTTP" browser option and limit depth to avoid CORS errors.
+              </AlertDescription>
+            </Alert>
+            
             <CardContent className="grid gap-4 pt-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -76,7 +85,6 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                       <SelectItem value="1">URL + direct links (1)</SelectItem>
                       <SelectItem value="2">Two levels deep (2)</SelectItem>
                       <SelectItem value="3">Three levels deep (3)</SelectItem>
-                      <SelectItem value="5">Five levels deep (5)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -95,11 +103,10 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1 page</SelectItem>
+                      <SelectItem value="3">3 pages</SelectItem>
                       <SelectItem value="5">5 pages</SelectItem>
                       <SelectItem value="10">10 pages</SelectItem>
                       <SelectItem value="20">20 pages</SelectItem>
-                      <SelectItem value="50">50 pages</SelectItem>
-                      <SelectItem value="100">100 pages</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -118,11 +125,10 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1 result</SelectItem>
+                      <SelectItem value="3">3 results</SelectItem>
                       <SelectItem value="5">5 results</SelectItem>
                       <SelectItem value="10">10 results</SelectItem>
                       <SelectItem value="20">20 results</SelectItem>
-                      <SelectItem value="50">50 results</SelectItem>
-                      <SelectItem value="100">100 results</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -133,21 +139,21 @@ export function CrawlingOptions({ options, onChange }: CrawlingOptionsProps) {
                 <div>
                   <Label htmlFor="browser-type">Browser Type</Label>
                   <Select
-                    value={options.crawlerType || 'playwright:adaptive'}
+                    value={options.crawlerType || 'cheerio'}
                     onValueChange={(val) => handleOptionChange('crawlerType', val)}
                   >
                     <SelectTrigger id="browser-type">
                       <SelectValue placeholder="Select browser" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="playwright:firefox">Firefox</SelectItem>
-                      <SelectItem value="playwright:chrome">Chrome</SelectItem>
-                      <SelectItem value="playwright:adaptive">Adaptive (Auto-switching)</SelectItem>
-                      <SelectItem value="cheerio">Raw HTTP (Fastest)</SelectItem>
+                      <SelectItem value="cheerio">Raw HTTP (Fastest, Recommended)</SelectItem>
+                      <SelectItem value="playwright:firefox">Firefox (Limited in browser)</SelectItem>
+                      <SelectItem value="playwright:chrome">Chrome (Limited in browser)</SelectItem>
+                      <SelectItem value="playwright:adaptive">Adaptive (Limited in browser)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Browser engine to use for crawling
+                    Method to use for crawling - Raw HTTP works best in browsers
                   </p>
                 </div>
 
