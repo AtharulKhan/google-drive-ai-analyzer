@@ -1,43 +1,54 @@
+
 import { toast } from 'sonner';
 
-const ACTOR_NAME_OR_ID = 'apify~page-analyzer'; // Or mJuwidcY8PejY3QKp
+// Using the website-content-crawler actor ID instead of page-analyzer
+const ACTOR_NAME_OR_ID = 'apify~website-content-crawler';
 
 interface ApifyActorInput {
-  url: string;
-  keywords?: string[]; // Optional keywords as per Page Analyzer actor
-  proxyConfig?: {
+  startUrls: Array<{ url: string }>;
+  useSitemaps?: boolean;
+  respectRobotsTxtFile?: boolean;
+  crawlerType?: string;
+  saveMarkdown?: boolean;
+  maxResults?: number;
+  maxCrawlPages?: number;
+  proxyConfiguration?: {
     useApifyProxy?: boolean;
-    // Add other proxy options if needed
   };
+  // Additional options can be added as needed
 }
 
-interface ApifyDatasetItem {
-  type: string;
-  data: any;
-  // ... other potential fields from the actor's output
-}
-
-export interface ScrapedContentResult {
+interface ScrapedContentResult {
   analyzedText: string; 
   failedUrl: string | null;
   error?: string;
 }
 
-function formatDatasetItemsToText(items: ApifyDatasetItem[]): string {
+function formatDatasetItemsToText(items: any[]): string {
   if (!items || items.length === 0) {
-    return "No structured data found in the analysis.";
+    return "No content found in the analysis.";
   }
 
-  let formattedText = "Page Analysis Report:\n\n";
+  let formattedText = "Website Content Analysis:\n\n";
 
-  items.forEach(item => {
-    formattedText += `## Type: ${item.type}\n`;
-    if (item.data) {
-      Object.entries(item.data).forEach(([key, value]) => {
-        formattedText += `  - ${key}: ${JSON.stringify(value)}\n`;
-      });
+  items.forEach((item, index) => {
+    formattedText += `## Page ${index + 1}: ${item.url}\n\n`;
+    
+    // Add the title if available
+    if (item.title) {
+      formattedText += `### ${item.title}\n\n`;
     }
-    formattedText += "\n";
+
+    // Add the markdown content if available (primary content format)
+    if (item.markdown) {
+      formattedText += item.markdown + "\n\n";
+    }
+    // If no markdown, use text content
+    else if (item.text) {
+      formattedText += item.text + "\n\n";
+    }
+
+    formattedText += "---\n\n";
   });
 
   return formattedText;
@@ -51,12 +62,21 @@ export async function analyzeUrlWithApify(url: string, keywords: string[] = []):
     return { analyzedText: "", failedUrl: url, error: "Apify API Token not set." };
   }
 
+  // Build the API URL for website-content-crawler
   const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_NAME_OR_ID}/run-sync-get-dataset-items?token=${apifyToken}`;
 
+  // Prepare the input according to website-content-crawler schema
   const input: ApifyActorInput = {
-    url: url,
-    keywords: keywords.length > 0 ? keywords : undefined, // Only include if keywords are provided
-    proxyConfig: { useApifyProxy: true } // Default to using Apify proxy
+    startUrls: [{ url }],
+    useSitemaps: false,
+    respectRobotsTxtFile: true,
+    crawlerType: "playwright:firefox", // Using firefox as default browser
+    saveMarkdown: true,
+    maxResults: 50, // Limit results to avoid excessive processing
+    maxCrawlPages: 100, // Limit crawl pages 
+    proxyConfiguration: { 
+      useApifyProxy: true 
+    }
   };
 
   try {
@@ -76,7 +96,7 @@ export async function analyzeUrlWithApify(url: string, keywords: string[] = []):
       return { analyzedText: "", failedUrl: url, error: errorMessage };
     }
 
-    const datasetItems: ApifyDatasetItem[] = await response.json();
+    const datasetItems = await response.json();
     
     if (!Array.isArray(datasetItems)) {
       console.error(`Unexpected response format from Apify for ${url}:`, datasetItems);
@@ -95,15 +115,15 @@ export async function analyzeUrlWithApify(url: string, keywords: string[] = []):
   }
 }
 
-// Function to analyze multiple URLs (sequentially to avoid overwhelming API or if needed)
-export async function analyzeMultipleUrlsWithApify(urls: string[], keywordsPerUrl?: string[][]): Promise<{ combinedAnalyzedText: string; failedUrls: string[] }> {
+// Function to analyze multiple URLs
+export async function analyzeMultipleUrlsWithApify(urls: string[]): Promise<{ combinedAnalyzedText: string; failedUrls: string[] }> {
   let combinedAnalyzedText = "";
   const failedUrls: string[] = [];
 
+  // For multiple URLs, we'll process them sequentially to avoid overwhelming the API
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
-    const keywords = keywordsPerUrl && keywordsPerUrl[i] ? keywordsPerUrl[i] : [];
-    const result = await analyzeUrlWithApify(url, keywords);
+    const result = await analyzeUrlWithApify(url);
     
     combinedAnalyzedText += `### Analysis for URL: ${url}\n\n`;
     if (result.error) {
