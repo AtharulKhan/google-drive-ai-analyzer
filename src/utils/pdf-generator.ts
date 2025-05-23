@@ -1,5 +1,7 @@
+
 import { pdf } from '@react-pdf/renderer';
 import AiOutputPdfDoc from '@/components/drive-analyzer/AiOutputPdfDoc';
+import React from 'react';
 
 /**
  * Downloads content as PDF using react-pdf.
@@ -10,7 +12,7 @@ export const downloadAsPdf = async (
 ): Promise<void> => {
   try {
     // 1. Create the PDF document instance with the AI output
-    const doc = <AiOutputPdfDoc aiOutput={content} />;
+    const doc = React.createElement(AiOutputPdfDoc, { aiOutput: content });
 
     // 2. Generate the PDF blob
     const blob = await pdf(doc).toBlob();
