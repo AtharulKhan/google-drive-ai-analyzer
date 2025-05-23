@@ -1,5 +1,5 @@
 import { pdf } from '@react-pdf/renderer';
-import AiOutputPdfDoc from '@/components/drive-analyzer/AiOutputPdfDoc'; // Ensure this path is correct
+import AiOutputPdfDoc from '@/components/drive-analyzer/AiOutputPdfDoc';
 
 /**
  * Downloads content as PDF using react-pdf.
@@ -37,10 +37,3 @@ export const downloadAsPdf = async (
     throw new Error(`PDF generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
-
-// The markdownToHtml function is no longer needed here as markdown parsing
-// is handled within AiOutputPdfDoc.tsx using marked.
-// If it's used elsewhere, it can remain or be moved. For now, assume it's not needed in this file.
-// export const markdownToHtml = (markdown: string): string => {
-//   return marked.parse(markdown) as string;
-// };

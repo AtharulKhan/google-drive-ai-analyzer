@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, FileText } from "lucide-react";
+import { Copy, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ProcessingStatus } from "./ProcessingStatus";
 import { downloadAsPdf } from "@/utils/pdf-generator";
@@ -19,14 +19,19 @@ interface AnalysisResultsProps {
 }
 
 export function AnalysisResults({ processingStatus, aiOutput }: AnalysisResultsProps) {
+  const [isPdfGenerating, setIsPdfGenerating] = React.useState(false);
+
   const handleDownloadPdf = async () => {
     try {
+      setIsPdfGenerating(true);
       toast.info("Preparing PDF download...");
       await downloadAsPdf(aiOutput, "drive-analysis-result");
       toast.success("PDF downloaded successfully");
     } catch (error) {
       console.error("PDF download error:", error);
       toast.error(`Failed to download PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsPdfGenerating(false);
     }
   };
 
@@ -55,10 +60,15 @@ export function AnalysisResults({ processingStatus, aiOutput }: AnalysisResultsP
               size="sm"
               variant="outline"
               onClick={handleDownloadPdf}
+              disabled={isPdfGenerating}
               className="text-xs md:text-sm"
             >
-              <FileText className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-              PDF
+              {isPdfGenerating ? (
+                <Loader2 className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              )}
+              {isPdfGenerating ? "Generating..." : "PDF"}
             </Button>
           </div>
           <ScrollArea className="border rounded-md p-2 md:p-4 h-[450px] md:h-[500px]">

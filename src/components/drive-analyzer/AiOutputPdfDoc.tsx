@@ -1,64 +1,79 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
-import { marked } from 'marked'; // We'll use marked to parse markdown
+import { marked } from 'marked'; // For parsing markdown
 
-// Register a default font that supports a wide range of characters.
-// Noto Sans is a good open-source option. Let's assume it's available or use a common one.
-// For simplicity in this step, we'll rely on default fonts if specific font registration becomes complex.
-// Font.register({
-//   family: 'Noto Sans',
-//   src: 'https://fonts.gstatic.com/s/notosans/v27/o-0IIpQlx3QUlC5A4PNr5TRA.ttf' // Example URL
-// });
-
-// Define base styles
+// Define base styles for PDF document
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
     padding: 30,
-    // fontFamily: 'Noto Sans', // Apply registered font
-    fontSize: 10, // Reduced font size for better fit
+    fontSize: 10,
   },
   section: {
     marginBottom: 10,
   },
   heading1: {
-    fontSize: 18, // Reduced from 24
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8, // Reduced from 12
+    marginBottom: 8,
   },
   heading2: {
-    fontSize: 16, // Reduced from 20
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 6, // Reduced from 10
+    marginBottom: 6,
   },
   heading3: {
-    fontSize: 14, // Reduced from 18
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 4, // Reduced from 8
+    marginBottom: 4,
   },
   paragraph: {
-    marginBottom: 6, // Reduced from 10
-    lineHeight: 1.4, // Added for better readability
+    marginBottom: 6,
+    lineHeight: 1.4,
   },
   listItem: {
-    marginBottom: 3, // Reduced from 5
-    marginLeft: 10, // Indent list items
+    marginBottom: 3,
+    marginLeft: 10,
   },
   code: {
-    fontFamily: 'Courier', // Monospaced font for code
+    fontFamily: 'Courier',
     backgroundColor: '#f0f0f0',
-    padding: '1px 2px', // Minimal padding for inline code
+    padding: '1px 2px',
     fontSize: 9,
   },
   pre: {
     fontFamily: 'Courier',
     backgroundColor: '#f0f0f0',
-    padding: 8, // Reduced from 10
-    marginBottom: 6, // Reduced from 10
+    padding: 8,
+    marginBottom: 6,
     fontSize: 9,
-    whiteSpace: 'pre-wrap', // Ensure wrapping for long lines in code blocks
-    wordBreak: 'break-all', // Break long words if necessary
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+  },
+  header: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#cccccc',
+    marginBottom: 10,
+    paddingBottom: 5,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 30,
+    right: 30,
+    textAlign: 'center',
+    fontSize: 8,
+    color: '#666666',
+  },
+  pageNumber: {
+    position: 'absolute',
+    bottom: 15,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 8,
+    color: '#666666',
   },
 });
 
@@ -74,64 +89,106 @@ const renderMarkdown = (markdown: string) => {
     return tokenList.map((token, index) => {
       switch (token.type) {
         case 'heading':
-          const Tag = token.depth === 1 ? styles.heading1 : token.depth === 2 ? styles.heading2 : styles.heading3;
-          return <Text key={index} style={Tag}>{(token as marked.Tokens.Heading).text}</Text>;
+          const headingStyle = token.depth === 1 
+            ? styles.heading1 
+            : token.depth === 2 
+              ? styles.heading2 
+              : styles.heading3;
+          return <Text key={index} style={headingStyle}>{(token as marked.Tokens.Heading).text}</Text>;
+          
         case 'paragraph':
-          // For paragraphs, we need to recursively render inline tokens
           return <Text key={index} style={styles.paragraph}>{renderInlineTokens(token.tokens)}</Text>;
+          
         case 'list':
           return (
             <View key={index} style={styles.section}>
               {(token as marked.Tokens.List).items.map((item, itemIndex) => (
-                // Each list item's text might contain further inline tokens
                 <Text key={itemIndex} style={styles.listItem}>
                   • {renderInlineTokens(item.tokens)}
                 </Text>
               ))}
             </View>
           );
-        case 'code': // For fenced code blocks
+          
+        case 'code':
           return <Text key={index} style={styles.pre}>{(token as marked.Tokens.Code).text}</Text>;
+          
         case 'space':
-          return null; // Or handle as a line break if needed: <Text key={index}>
-</Text>
+          return null;
+          
         case 'hr':
-            return <View key={index} style={{ borderBottomWidth: 1, borderBottomColor: '#cccccc', marginVertical: 10 }} />;
+          return <View key={index} style={{ borderBottomWidth: 1, borderBottomColor: '#cccccc', marginVertical: 10 }} />;
+          
         case 'blockquote':
-            return (
-                <View key={index} style={{ borderLeftWidth: 2, borderLeftColor: '#cccccc', paddingLeft: 10, marginLeft: 5, marginBottom: 6 }}>
-                    {renderTokens(token.tokens)}
+          return (
+            <View key={index} style={{ borderLeftWidth: 2, borderLeftColor: '#cccccc', paddingLeft: 10, marginLeft: 5, marginBottom: 6 }}>
+              {renderTokens(token.tokens)}
+            </View>
+          );
+          
+        case 'table':
+          const tableToken = token as marked.Tokens.Table;
+          return (
+            <View key={index} style={{ marginVertical: 5 }}>
+              <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#cccccc', paddingBottom: 3 }}>
+                {tableToken.header.map((cell, cellIndex) => (
+                  <Text key={cellIndex} style={{ flex: 1, fontWeight: 'bold', fontSize: 9 }}>
+                    {renderInlineTokens(cell.tokens)}
+                  </Text>
+                ))}
+              </View>
+              {tableToken.rows.map((row, rowIndex) => (
+                <View key={rowIndex} style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#cccccc', paddingVertical: 3 }}>
+                  {row.map((cell, cellIndex) => (
+                    <Text key={cellIndex} style={{ flex: 1, fontSize: 9 }}>
+                      {renderInlineTokens(cell.tokens)}
+                    </Text>
+                  ))}
                 </View>
-            );
+              ))}
+            </View>
+          );
+          
         default:
-          console.warn('Unsupported token type:', token.type, token);
-          // Fallback for other token types (e.g., if raw HTML is mixed in, or other complex types)
-          // For now, we'll render the raw text if available, or an empty string.
+          // Fallback for other token types
           return token.raw ? <Text key={index}>{token.raw}</Text> : null;
       }
     });
   };
 
-  // Helper to render inline tokens (like bold, italic, code spans, links within a paragraph)
+  // Helper to render inline tokens (like bold, italic, code spans, links)
   const renderInlineTokens = (inlineTokens: marked.Token[] | undefined): React.ReactNode[] => {
     if (!inlineTokens) return [];
+    
     return inlineTokens.map((token, index) => {
       switch (token.type) {
         case 'text':
           return (token as marked.Tokens.Text).text;
+          
         case 'strong': // Bold
           return <Text key={index} style={{ fontWeight: 'bold' }}>{renderInlineTokens((token as marked.Tokens.Strong).tokens)}</Text>;
+          
         case 'em': // Italic
           return <Text key={index} style={{ fontStyle: 'italic' }}>{renderInlineTokens((token as marked.Tokens.Em).tokens)}</Text>;
+          
         case 'codespan': // Inline code
           return <Text key={index} style={styles.code}>{(token as marked.Tokens.Codespan).text}</Text>;
+          
         case 'link':
-          return <Text key={index} style={{ color: 'blue', textDecoration: 'underline' }}>{(token as marked.Tokens.Link).text} ({(token as marked.Tokens.Link).href})</Text>; // Simple link display
+          return (
+            <Text key={index} style={{ color: 'blue', textDecoration: 'underline' }}>
+              {(token as marked.Tokens.Link).text} ({(token as marked.Tokens.Link).href})
+            </Text>
+          );
+          
         case 'br':
-            return '
-';
+          return '\n';
+          
+        case 'image':
+          // Images are not directly supported in react-pdf text components
+          return <Text key={index}>[Image: {(token as marked.Tokens.Image).text}]</Text>;
+          
         default:
-          console.warn('Unsupported inline token type:', token.type, token);
           return token.raw || '';
       }
     });
@@ -140,15 +197,68 @@ const renderMarkdown = (markdown: string) => {
   return renderTokens(tokens);
 };
 
-
 export const AiOutputPdfDoc: React.FC<AiOutputPdfDocProps> = ({ aiOutput }) => {
+  // Split markdown content into chunks to distribute across pages
+  // This is a simple approach - each page will contain about 3000 chars
+  // For a more sophisticated approach, we could analyze tokens and distribute content based on token types
+  const contentChunks: string[] = [];
+  const chunkSize = 3000; // Characters per page (approximate)
+  
+  // If content is very small, keep it on a single page
+  if (aiOutput.length < chunkSize) {
+    contentChunks.push(aiOutput);
+  } else {
+    // Split by paragraphs (marked by double newlines)
+    const paragraphs = aiOutput.split(/\n\n+/);
+    let currentChunk = '';
+    
+    // Distribute paragraphs across chunks
+    paragraphs.forEach(paragraph => {
+      if (currentChunk.length + paragraph.length < chunkSize) {
+        currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+      } else {
+        // If current chunk is not empty, save it and start a new one
+        if (currentChunk) {
+          contentChunks.push(currentChunk);
+        }
+        currentChunk = paragraph;
+      }
+    });
+    
+    // Add the last chunk if not empty
+    if (currentChunk) {
+      contentChunks.push(currentChunk);
+    }
+  }
+  
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        <View>
-          {renderMarkdown(aiOutput)}
-        </View>
-      </Page>
+      {contentChunks.map((chunk, index) => (
+        <Page key={index} size="A4" style={styles.page}>
+          {index === 0 && (
+            <View style={styles.header}>
+              <Text style={styles.heading1}>AI Analysis Results</Text>
+              <Text style={{ fontSize: 8, color: '#666666' }}>
+                Generated on: {new Date().toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </Text>
+            </View>
+          )}
+          
+          <View style={{ flex: 1 }}>
+            {renderMarkdown(chunk)}
+          </View>
+          
+          <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
+            `${pageNumber} / ${totalPages}`
+          )} />
+        </Page>
+      ))}
     </Document>
   );
 };
