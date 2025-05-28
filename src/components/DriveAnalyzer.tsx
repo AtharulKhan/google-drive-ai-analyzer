@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -524,7 +523,7 @@ export default function DriveAnalyzer() {
 
             <TabsContent value="files">
               <div className="space-y-6">
-                {/* File Selection Section - Now with icons and tooltips */}
+                {/* File Selection Section - Now includes saved prompts and analysis buttons */}
                 <TooltipProvider>
                   <div className="flex items-center justify-center gap-2 mb-6">
                     <Tooltip>
@@ -533,7 +532,7 @@ export default function DriveAnalyzer() {
                           onClick={handleBrowseDrive}
                           disabled={!isSignedIn || !isReady}
                           size="icon"
-                          variant="outline"
+                          className="bg-green-600 hover:bg-green-700 text-white"
                         >
                           <FolderOpen className="h-4 w-4" />
                         </Button>
@@ -603,6 +602,22 @@ export default function DriveAnalyzer() {
                         <p>Clear All Files</p>
                       </TooltipContent>
                     </Tooltip>
+
+                    {/* Saved Prompts and Analysis Buttons */}
+                    <SavedPrompts
+                      savedPrompts={savedPrompts}
+                      newPromptTitle={newPromptTitle}
+                      setNewPromptTitle={setNewPromptTitle}
+                      newPromptContent={newPromptContent}
+                      setNewPromptContent={setNewPromptContent}
+                      onSavePrompt={handleSavePrompt}
+                      onDeletePrompt={handleDeletePrompt}
+                    />
+                    
+                    <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)}>
+                      <History className="h-4 w-4" />
+                      <span className="sr-only">View Saved Analyses</span>
+                    </Button>
                   </div>
                 </TooltipProvider>
 
