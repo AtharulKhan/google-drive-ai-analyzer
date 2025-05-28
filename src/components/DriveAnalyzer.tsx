@@ -42,7 +42,11 @@ import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
 const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
 
-export default function DriveAnalyzer() {
+interface DriveAnalyzerProps {
+  localFiles?: File[]; // Added prop for local files
+}
+
+export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // Destructure localFiles
   // Use our custom hook for state management
   const {
     // Files
@@ -497,11 +501,13 @@ export default function DriveAnalyzer() {
                 </div>
 
                 {/* File List Component */}
-                <FileList 
-                  selectedFiles={selectedFiles}
-                  displayFiles={displayFiles}
-                  onRemoveFile={handleRemoveFile}
-                  onClearFiles={handleClearFiles}
+                <FileList
+                  googleFiles={selectedFiles} // Renamed for clarity
+                  localFiles={localFiles}    // Pass localFiles
+                  displayFiles={displayFiles} // This might need adjustment if it's only for Google Files
+                  onRemoveGoogleFile={handleRemoveFile} // Renamed for clarity
+                  onClearGoogleFiles={handleClearFiles} // Renamed for clarity
+                  // onClearLocalFiles will be needed if we add a "clear local files" button here
                   selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
                   savedAnalyses={savedAnalyses}
                 />

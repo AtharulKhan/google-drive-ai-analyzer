@@ -1,10 +1,19 @@
 import { defineConfig } from "vite";
+/// <reference types="vitest" />
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Add type annotation for vitest config
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/setupTests.ts'], // Added setup file
+    css: true, // If you have CSS imports in your components
+  },
   server: {
     host: "::",
     port: 8080,
