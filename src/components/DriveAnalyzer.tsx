@@ -25,6 +25,7 @@ import useAnalysisState, {
   SavedPrompt,
   SavedAnalysis
 } from "@/hooks/useAnalysisState";
+import { processLocalFiles } from "@/utils/local-file-processor";
 
 // Import our components
 import { FileList } from "./drive-analyzer/FileList";
@@ -141,14 +142,14 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     });
   }, [isReady, openPicker, handleAddFiles]);
 
-  // Updated process files and send to OpenRouter for analysis with Apify integration
+  // Updated process files and send to OpenRouter for analysis with local file support
   const handleRunAnalysis = useCallback(async () => {
     if (!accessToken && selectedFiles.length > 0) { // Only require accessToken if Drive files are selected
       toast.error("Please sign in to Google Drive to process selected files.");
       return;
     }
 
-    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0) {
+    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && (!localFiles || localFiles.length === 0)) {
       toast.error("Please select files, paste text, or add URLs to analyze.");
       return;
     }
@@ -159,7 +160,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     }
 
     // Determine the total number of items to process for progress calculation
-    const totalItems = selectedFiles.length + (urls.length > 0 ? 1 : 0) + (pastedText.trim() !== "" ? 1 : 0);
+    const totalItems = selectedFiles.length + (urls.length > 0 ? 1 : 0) + (pastedText.trim() !== "" ? 1 : 0) + (localFiles?.length || 0);
 
     setProcessingStatus({
       isProcessing: true,
@@ -210,14 +211,33 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
         allContentSources.push(`### Pasted Text Content\n\n${pastedText.trim()}`);
         currentProgress += 5; // Add 5% for pasted text
       }
+
+      // 3. Process Local Files
+      if (localFiles && localFiles.length > 0) {
+        setProcessingStatus(prev => ({
+          ...prev,
+          currentStep: `Processing ${localFiles.length} local file(s)...`,
+          progress: currentProgress + 5,
+          processedFiles: itemsProcessed,
+        }));
+
+        try {
+          const localFileContents = await processLocalFiles(localFiles);
+          allContentSources.push(...localFileContents);
+          itemsProcessed += localFiles.length;
+          currentProgress += 15; // Local files take up to 15% of progress
+        } catch (error) {
+          console.error("Error processing local files:", error);
+          toast.error(`Error processing local files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
       
-      // 3. Process Google Drive Files
-      const fileProcessingProgressMax = 60; // Files take up to 60% of progress
+      // 4. Process Google Drive Files
+      const fileProcessingProgressMax = 45; // Reduced from 60% to account for local files
       const initialProgressForFiles = currentProgress;
 
       if (selectedFiles.length > 0 && !accessToken) {
         toast.error("Cannot process Google Drive files without being signed in.");
-        // Reset processing status or handle as a partial failure if other content exists
         setProcessingStatus({ isProcessing: false, currentStep: "", progress: 0, totalFiles: 0, processedFiles: 0 });
         return;
       }
@@ -227,14 +247,13 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
         itemsProcessed++;
         setProcessingStatus(prev => ({
           ...prev,
-          currentStep: `Processing file ${i + 1} of ${selectedFiles.length}: ${file.name}`,
-          // Progress for files is spread within their 60% allocation
+          currentStep: `Processing Google Drive file ${i + 1} of ${selectedFiles.length}: ${file.name}`,
           progress: initialProgressForFiles + Math.round(((i + 1) / selectedFiles.length) * fileProcessingProgressMax),
           processedFiles: itemsProcessed - 1,
         }));
 
         try {
-          const content = await fetchFileContent(file, accessToken!); // accessToken is checked above for selectedFiles
+          const content = await fetchFileContent(file, accessToken!);
           const truncatedContent = content.slice(0, MAX_DOC_CHARS);
           allContentSources.push(
             `### ${file.name} (ID: ${file.id})\n${truncatedContent}`
@@ -311,6 +330,9 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
       if (pastedText.trim() !== "") {
         analysisSources.push({ type: 'text', name: 'Pasted Text Content' });
       }
+      if (localFiles && localFiles.length > 0) {
+        localFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name }));
+      }
 
       const currentTimestamp = Date.now();
       const newAnalysis = {
@@ -354,7 +376,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
         processedFiles: 0,
       });
     }
-  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel, urls, pastedText, crawlingOptions, handleSaveAnalysis]);
+  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel, urls, pastedText, crawlingOptions, handleSaveAnalysis, localFiles]);
 
   // Handle saving a new prompt
   const handleSavePrompt = useCallback(() => {
@@ -583,7 +605,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
             disabled={
               (!isSignedIn && selectedFiles.length > 0) || // Disable if not signed in AND trying to process files
               (!isReady && selectedFiles.length > 0) || // Disable if picker not ready AND trying to process files
-              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0) ||
+              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && (!localFiles || localFiles.length === 0)) ||
               processingStatus.isProcessing
             }
             className="w-full sm:w-auto"
