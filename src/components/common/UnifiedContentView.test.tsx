@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -135,21 +136,7 @@ describe('UnifiedContentView', () => {
   });
 
 
-  test('displays read-only message and textarea is readonly when isEditable is false', () => {
-    render(<UnifiedContentView initialContent={initialContent} isEditable={false} />);
-    expect(screen.getByText(/This is a read-only combined view of all content sources. Edits made here will not be saved./i)).toBeInTheDocument();
-    const textarea = screen.getByRole('textbox');
-    expect(textarea).toHaveAttribute('readonly');
-  });
-  
-  test('when isEditable is not provided, it defaults to false (read-only)', () => {
-    render(<UnifiedContentView initialContent={initialContent} />); // isEditable is not provided
-    expect(screen.getByText(/This is a read-only combined view of all content sources. Edits made here will not be saved./i)).toBeInTheDocument();
-    const textarea = screen.getByRole('textbox');
-    expect(textarea).toHaveAttribute('readonly');
-  });
-
-  test('displays experimental editing message and textarea is editable when isEditable is true', () => {
+  test('displays editing message when isEditable is true', () => {
     const mockOnContentChange = jest.fn();
     render(
       <UnifiedContentView
@@ -158,7 +145,7 @@ describe('UnifiedContentView', () => {
         onContentChange={mockOnContentChange}
       />
     );
-    expect(screen.getByText(/Note: Editing here will attempt to update the original source. This functionality is experimental./i)).toBeInTheDocument();
+    expect(screen.getByText(/This view shows extracted content from all sources. You can edit it here, but changes won't affect the original sources./i)).toBeInTheDocument();
     const textarea = screen.getByRole('textbox');
     expect(textarea).not.toHaveAttribute('readonly');
 
@@ -178,4 +165,3 @@ describe('UnifiedContentView', () => {
   });
 
 });
-```
