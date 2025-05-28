@@ -243,3 +243,233 @@ describe('DriveAnalyzerPage Integration Tests', () => {
     });
   });
 });
+
+// --- Unified Content View Integration Tests ---
+
+// Mock useAnalysisState - This is crucial for controlling data for getCombinedContent
+// This mock needs to be defined outside of any describe block if it's to be consistently applied
+// or reset/re-mocked in beforeEach.
+vi.mock('@/hooks/useAnalysisState');
+
+// Mock child components that are not the focus of this integration test
+vi.mock('@/components/drive-analyzer/LocalFileInput', () => ({
+  default: vi.fn(({ onFilesSelected, className }) => (
+    <div data-testid="mocked-local-file-input" className={className}>
+      <input
+        type="file"
+        data-testid="actual-file-input-for-mock" // More specific test ID for the input itself
+        onChange={(e) => {
+          if (e.target.files) {
+            onFilesSelected(Array.from(e.target.files));
+          }
+        }}
+        multiple
+      />
+      <span>Mocked LocalFileInput</span>
+    </div>
+  )),
+}));
+
+vi.mock('@/components/DriveAnalyzer', () => ({
+  default: vi.fn(() => <div data-testid="drive-analyzer-mock">Mocked DriveAnalyzer</div>),
+}));
+
+describe('DriveAnalyzerPage - Unified Content View Integration', () => {
+  // Define a more complete initial state for useAnalysisState mock
+  const getInitialMockAnalysisState = () => ({
+    selectedFiles: [], // Google Drive files
+    pastedText: "",
+    urls: [],
+    // localFiles is NOT part of useAnalysisState, it's page state.
+    // We will simulate its population via the LocalFileInput mock.
+    
+    displayFiles: [],
+    currentUrlInput: "",
+    crawlingOptions: { maxCrawlDepth: 1, maxCrawlPages: 10, maxResults: 10, crawlerType: "cheerio", useSitemaps: false, includeIndirectLinks: false, maxIndirectLinks: 5},
+    userPrompt: "Summarize this content.",
+    aiOutput: "",
+    savedPrompts: [],
+    savedAnalyses: [],
+    selectedAnalysisIdsForPrompt: [],
+    processingStatus: { isProcessing: false, currentStep: "", progress: 0, totalFiles: 0, processedFiles: 0 },
+    activeTab: "files",
+
+    setSelectedFiles: vi.fn(),
+    setPastedText: vi.fn(),
+    setUrls: vi.fn(),
+    handleAddFiles: vi.fn(),
+    handleRemoveFile: vi.fn(),
+    handleClearFiles: vi.fn(),
+    handlePastedTextChange: vi.fn((text: string) => {
+      // Simulate state update for pastedText if necessary for some tests
+      const currentState = vi.mocked(useAnalysisState).mock.results[0]?.value;
+      if (currentState) currentState.pastedText = text;
+    }),
+    handleClearPastedText: vi.fn(() => {
+      const currentState = vi.mocked(useAnalysisState).mock.results[0]?.value;
+      if (currentState) currentState.pastedText = "";
+    }),
+    setCurrentUrlInput: vi.fn(),
+    handleAddUrl: vi.fn(),
+    handleRemoveUrl: vi.fn(),
+    handleClearUrls: vi.fn(),
+    setCrawlingOptions: vi.fn(),
+    handleCrawlingOptionsChange: vi.fn(),
+    setUserPrompt: vi.fn(),
+    setAiOutput: vi.fn(),
+    setProcessingStatus: vi.fn(),
+    setActiveTab: vi.fn(),
+    setSavedPrompts: vi.fn(),
+    setSavedAnalyses: vi.fn(),
+    handleSaveAnalysis: vi.fn(),
+    handleRenameAnalysis: vi.fn(),
+    handleDeleteAnalysis: vi.fn(),
+    handleDeleteAllAnalyses: vi.fn(),
+    toggleAnalysisSelectionForPrompt: vi.fn(),
+  });
+
+  // Helper to render with router (already exists in the file, ensure it's used or adapt)
+  const renderDriveAnalyzerPage = () => {
+    return render(
+      <MemoryRouter>
+        <DriveAnalyzerPage />
+      </MemoryRouter>
+    );
+  };
+  
+  beforeEach(() => {
+    // Reset mocks and provide default implementation for each test
+    // Note: localStorageMock.clear() and vi.clearAllMocks() are already in the outer describe's beforeEach
+    // We just need to set the return value for useAnalysisState for this context
+    vi.mocked(useAnalysisState).mockReturnValue(getInitialMockAnalysisState());
+  });
+
+  it('opens unified view dialog with no content message', async () => {
+    renderDriveAnalyzerPage();
+    
+    const unifiedViewButton = screen.getByRole('button', { name: /unified view/i });
+    expect(unifiedViewButton).toBeInTheDocument();
+    fireEvent.click(unifiedViewButton);
+
+    await waitFor(() => {
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+      expect(within(dialog).getByText('Unified Content View')).toBeInTheDocument(); // Dialog title
+      expect(within(dialog).getByText(/No content sources have been added yet./i)).toBeInTheDocument();
+    });
+  });
+
+  it('dialog displays combined content correctly from useAnalysisState and page state localFiles', async () => {
+    const user = userEvent.setup();
+    // Setup mock state from useAnalysisState
+    vi.mocked(useAnalysisState).mockReturnValue({
+      ...getInitialMockAnalysisState(),
+      pastedText: "Some pasted text.",
+      urls: ["http://example.com"],
+      selectedFiles: [{ id: 'gdrive1', name: 'gdrivefile.txt', mimeType: 'text/plain', iconLink:'', webViewLink: '' }], // Google Drive file
+    });
+
+    renderDriveAnalyzerPage();
+
+    // Simulate selecting a local file via the mocked LocalFileInput
+    // The mocked LocalFileInput has an input with data-testid="actual-file-input-for-mock"
+    const localFileInputElement = screen.getByTestId('actual-file-input-for-mock');
+    const localFile = new File(['Local file content here'], 'localfile.txt', { type: 'text/plain' });
+    
+    // userEvent.upload is preferred for simulating file input
+    await act(async () => {
+      await user.upload(localFileInputElement, localFile);
+    });
+    
+    // Now open the dialog
+    fireEvent.click(screen.getByRole('button', { name: /unified view/i }));
+
+    await waitFor(() => {
+      const dialogContent = screen.getByRole('dialog');
+      expect(dialogContent).toBeInTheDocument();
+      
+      // Check for parts of the combined content
+      expect(within(dialogContent).getByText("--- Pasted Text ---")).toBeInTheDocument();
+      expect(within(dialogContent).getByText("Some pasted text.")).toBeInTheDocument();
+      expect(within(dialogContent).getByText("--- URLs ---")).toBeInTheDocument();
+      expect(within(dialogContent).getByText("URL: http://example.com")).toBeInTheDocument(); // Exact match
+      expect(within(dialogContent).getByText("[Scraped content for http://example.com will appear here]")).toBeInTheDocument();
+      expect(within(dialogContent).getByText("--- Google Drive Files ---")).toBeInTheDocument();
+      expect(within(dialogContent).getByText("Google Drive File: gdrivefile.txt (ID: gdrive1)")).toBeInTheDocument(); // Exact match
+      expect(within(dialogContent).getByText("[Content of gdrivefile.txt will be processed]")).toBeInTheDocument();
+      expect(within(dialogContent).getByText("--- Local Files ---")).toBeInTheDocument();
+      expect(within(dialogContent).getByText("Local File: localfile.txt")).toBeInTheDocument(); // Exact match
+      expect(within(dialogContent).getByText("[Content of localfile.txt will be processed]")).toBeInTheDocument();
+    });
+  });
+  
+  it('UnifiedContentView is rendered as read-only', async () => {
+    vi.mocked(useAnalysisState).mockReturnValue({
+      ...getInitialMockAnalysisState(),
+      pastedText: "Some text", // Ensure there's some content to display the textarea
+    });
+
+    renderDriveAnalyzerPage();
+    fireEvent.click(screen.getByRole('button', { name: /unified view/i }));
+
+    await waitFor(() => {
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+      // Check for the read-only message within UnifiedContentView
+      expect(within(dialog).getByText(/This is a read-only combined view of all content sources. Edits made here will not be saved./i)).toBeInTheDocument();
+      
+      // Check that the textarea used for content display is read-only.
+      // The search input is also a textbox. The content textarea does not have "Search content..." placeholder.
+      const textboxes = within(dialog).getAllByRole('textbox');
+      const contentTextarea = textboxes.find(tb => tb.getAttribute('placeholder') !== 'Search content...');
+      expect(contentTextarea).toBeInTheDocument();
+      expect(contentTextarea).toHaveAttribute('readonly');
+    });
+  });
+
+  it('dialog can be closed using the explicit close button', async () => {
+    renderDriveAnalyzerPage();
+    fireEvent.click(screen.getByRole('button', { name: /unified view/i }));
+
+    let dialog: HTMLElement | null = null;
+    await waitFor(() => {
+      dialog = screen.getByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+    });
+
+    // ShadCN dialogs usually have a close button with an X icon, often label "Close"
+    // Using within(dialog!) to scope the search after dialog is confirmed to exist.
+    const closeButton = within(dialog!).getByRole('button', { name: /close/i }); 
+    expect(closeButton).toBeInTheDocument();
+    fireEvent.click(closeButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+  
+  it('dialog can be closed by pressing Escape key', async () => {
+    renderDriveAnalyzerPage();
+    fireEvent.click(screen.getByRole('button', { name: /unified view/i }));
+
+    let dialog: HTMLElement | null = null;
+    await waitFor(() => {
+      dialog = screen.getByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+    });
+    
+    // Ensure the dialog or an element within it has focus for Escape to work.
+    // fireEvent.keyDown on the dialog element itself usually works with ShadCN.
+    if (dialog) { // type guard
+        // Focus the dialog or a focusable element inside it if necessary,
+        // though fireEvent.keyDown on the dialog often suffices.
+        dialog.focus(); // Or a specific focusable element within.
+        fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape', keyCode: 27, charCode: 27 });
+    }
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+});
