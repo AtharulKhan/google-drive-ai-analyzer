@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, Combine, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
@@ -522,59 +524,87 @@ export default function DriveAnalyzer() {
 
             <TabsContent value="files">
               <div className="space-y-6">
-                {/* File Selection Section */}
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                  <Button
-                    onClick={handleBrowseDrive}
-                    disabled={!isSignedIn || !isReady}
-                    className="flex-1"
-                  >
-                    <FolderOpen className="mr-2" />
-                    Add Files from Google Drive
-                  </Button>
+                {/* File Selection Section - Now with icons and tooltips */}
+                <TooltipProvider>
+                  <div className="flex items-center justify-center gap-2 mb-6">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleBrowseDrive}
+                          disabled={!isSignedIn || !isReady}
+                          size="icon"
+                          variant="outline"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Add Files from Google Drive</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-                  <Button
-                    onClick={handleLocalFileInputClick}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Upload className="mr-2" />
-                    Select Local Files
-                  </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleLocalFileInputClick}
+                          size="icon"
+                          variant="outline"
+                        >
+                          <Upload className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Select Local Files</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-                  <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="flex-1">
-                        <Combine className="mr-2 h-4 w-4" />
-                        Unified View
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-5xl h-[80vh]">
-                      <DialogHeader>
-                        <DialogTitle>Unified Content View - All Sources</DialogTitle>
-                      </DialogHeader>
-                      <UnifiedContentView
-                        googleFiles={selectedFiles}
-                        localFiles={localFiles}
-                        pastedText={pastedText}
-                        urls={urls}
-                        userPrompt={userPrompt}
-                        customInstructions={customInstructionsForUnifiedView}
-                        accessToken={accessToken}
-                        isEditable={true}
-                      />
-                    </DialogContent>
-                  </Dialog>
+                    <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DialogTrigger asChild>
+                            <Button size="icon" variant="outline">
+                              <Combine className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Unified Content View</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <DialogContent className="max-w-5xl h-[80vh]">
+                        <DialogHeader>
+                          <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                        </DialogHeader>
+                        <UnifiedContentView
+                          googleFiles={selectedFiles}
+                          localFiles={localFiles}
+                          pastedText={pastedText}
+                          urls={urls}
+                          userPrompt={userPrompt}
+                          customInstructions={customInstructionsForUnifiedView}
+                          accessToken={accessToken}
+                          isEditable={true}
+                        />
+                      </DialogContent>
+                    </Dialog>
 
-                  <Button
-                    onClick={handleClearFiles}
-                    disabled={selectedFiles.length === 0 && localFiles.length === 0}
-                    variant="outline"
-                  >
-                    <Trash2 className="mr-2" />
-                    Clear All Files
-                  </Button>
-                </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleClearFiles}
+                          disabled={selectedFiles.length === 0 && localFiles.length === 0}
+                          size="icon"
+                          variant="outline"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Clear All Files</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
 
                 {/* File List Component */}
                 <FileList
