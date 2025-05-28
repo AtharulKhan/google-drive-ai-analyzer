@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -75,7 +76,7 @@ vi.mock('@/components/ui/button', async (importOriginal) => { // Assuming Button
   const actual = await importOriginal<typeof import('@/components/ui/button')>();
   return {
     ...actual,
-    Button: React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+    Button: React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; disabled?: boolean }>(
       ({ children, onClick, variant, disabled, ...props }, ref) => (
         <button ref={ref} onClick={onClick} {...props} data-variant={variant} disabled={disabled}>
           {children}

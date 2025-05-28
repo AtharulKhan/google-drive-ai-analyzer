@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 
 // Using the website-content-crawler actor ID
@@ -12,6 +11,11 @@ export interface ApifyCrawlingOptions {
   useSitemaps?: boolean;
   includeIndirectLinks?: boolean;
   maxIndirectLinks?: number;
+  maxRequestsPerCrawl?: number;
+  maxConcurrency?: number;
+  saveSnapshots?: boolean;
+  includeUrlGlobs?: string[];
+  excludeUrlGlobs?: string[];
 }
 
 interface ApifyActorInput {
@@ -88,7 +92,12 @@ export async function analyzeUrlWithApify(
     crawlerType: "cheerio", // Default to faster raw HTTP crawler
     useSitemaps: false, // Default to not using sitemaps
     includeIndirectLinks: false, // Default to not following indirect links
-    maxIndirectLinks: 5 // Default limit for indirect links if enabled
+    maxIndirectLinks: 5, // Default limit for indirect links if enabled
+    maxRequestsPerCrawl: 10, // Default to 10 requests per crawl
+    maxConcurrency: 5, // Default to 5 concurrent requests
+    saveSnapshots: false, // Default to not saving snapshots
+    includeUrlGlobs: [], // Default to no include URL globs
+    excludeUrlGlobs: [] // Default to no exclude URL globs
   };
 
   // Merge default options with provided options

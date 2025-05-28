@@ -28,7 +28,7 @@ Object.defineProperty(window, 'localStorage', {
 
 const defaultCrawlingOptions: ApifyCrawlingOptions = {
   crawlerType: 'playwright:firefox',
-  maxRequestsPerCrawl: 100,
+  maxCrawlPages: 100,
   maxCrawlingDepth: 10,
   maxConcurrency: 50,
   saveSnapshots: false,
@@ -105,7 +105,6 @@ describe('TextUrlInput URL Features', () => {
       throw new Error("Component not rendered yet, or rerender function not captured.");
     }
   };
-
 
   it('loads saved URLs from localStorage on mount', () => {
     const testUrls = ['https://example.com/test1', 'https://example.com/test2'];

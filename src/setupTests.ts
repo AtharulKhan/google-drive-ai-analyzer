@@ -1,7 +1,7 @@
+
 // src/setupTests.ts
 import '@testing-library/jest-dom/vitest'; // For Vitest: extends Vitest's expect with jest-dom matchers
-// Or if the above doesn't work directly depending on versions:
-// import '@testing-library/jest-dom'; // And ensure vitest globals are enabled for expect to pick it up.
+import { vi } from 'vitest';
 
 // Mock ResizeObserver
 const ResizeObserverMock = vi.fn(() => ({

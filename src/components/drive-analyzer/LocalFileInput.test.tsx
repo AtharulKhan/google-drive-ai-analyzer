@@ -1,12 +1,12 @@
+
 import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import LocalFileInput from './LocalFileInput'; // Adjust path as necessary
-import { Button } from '@/components/ui/button'; // Mock or ensure it's available
 
-// Mocking Button component as it's an external dependency from ui/button
+// Mocking Button component with proper typing
 vi.mock('@/components/ui/button', () => ({
-  Button: React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  Button: React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string }>(
     ({ children, onClick, variant, ...props }, ref) => (
       <button ref={ref} onClick={onClick} {...props} data-variant={variant}>
         {children}
@@ -72,7 +72,3 @@ describe('LocalFileInput', () => {
     clickSpy.mockRestore();
   });
 });
-
-// Helper to add data-testid to the input in the actual component for easier selection
-// The LocalFileInput.tsx needs to be modified to include data-testid="local-file-input" on the <input type="file" /> element.
-// Example: <input data-testid="local-file-input" type="file" ... />
