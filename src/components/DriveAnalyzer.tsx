@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Loader2, RefreshCw, Settings, Trash2 } from "lucide-react";
+import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, Combine, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker } from "@/hooks/useDrivePicker";
@@ -26,6 +26,14 @@ import useAnalysisState, {
   SavedAnalysis
 } from "@/hooks/useAnalysisState";
 import { processLocalFiles } from "@/utils/local-file-processor";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { UnifiedContentView } from '@/components/common/UnifiedContentView';
 
 // Import our components
 import { FileList } from "./drive-analyzer/FileList";
@@ -33,7 +41,7 @@ import { TextUrlInput } from "./drive-analyzer/TextUrlInput";
 import { SavedPrompts } from "./drive-analyzer/SavedPrompts";
 import { SavedAnalysesSidebar } from "./drive-analyzer/SavedAnalysesSidebar"; 
 import { SavedAnalysisDetailView, SavedAnalysisSource } from "./drive-analyzer/SavedAnalysisDetailView";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { History } from "lucide-react";
 import { PromptSelector } from "./drive-analyzer/PromptSelector";
 import { AnalysisResults } from "./drive-analyzer/AnalysisResults";
@@ -43,11 +51,7 @@ import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
 const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
 
-interface DriveAnalyzerProps {
-  localFiles?: File[]; // Added prop for local files
-}
-
-export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // Destructure localFiles
+export default function DriveAnalyzer() {
   // Use our custom hook for state management
   const {
     // Files
@@ -95,6 +99,10 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     toggleAnalysisSelectionForPrompt,
   } = useAnalysisState();
 
+  // Local state
+  const [localFiles, setLocalFiles] = useState<File[]>([]);
+  const [isUnifiedViewOpen, setIsUnifiedViewOpen] = useState(false);
+
   // State variables
   const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
   const [maxFiles, setMaxFiles] = useState<number>(DEFAULT_MAX_FILES);
@@ -126,6 +134,25 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     }
   }, [customInstructions]);
 
+  // Handle local file selection
+  const handleLocalFilesSelected = useCallback((files: File[]) => {
+    setLocalFiles(files);
+  }, []);
+
+  // Handle local file input
+  const handleLocalFileInputClick = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files) {
+        handleLocalFilesSelected(Array.from(files));
+      }
+    };
+    input.click();
+  }, [handleLocalFilesSelected]);
+
   // Handle browsing Google Drive and selecting files
   const handleBrowseDrive = useCallback(() => {
     if (!isReady) {
@@ -142,6 +169,11 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     });
   }, [isReady, openPicker, handleAddFiles]);
 
+  // Load custom instructions for unified view
+  const customInstructionsForUnifiedView = React.useMemo(() => {
+    return localStorage.getItem('drive-analyzer-custom-instructions') || '';
+  }, [isUnifiedViewOpen]);
+
   // Updated process files and send to OpenRouter for analysis with local file support
   const handleRunAnalysis = useCallback(async () => {
     if (!accessToken && selectedFiles.length > 0) { // Only require accessToken if Drive files are selected
@@ -149,7 +181,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
       return;
     }
 
-    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && (!localFiles || localFiles.length === 0)) {
+    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) {
       toast.error("Please select files, paste text, or add URLs to analyze.");
       return;
     }
@@ -159,8 +191,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
       return;
     }
 
-    // Determine the total number of items to process for progress calculation
-    const totalItems = selectedFiles.length + (urls.length > 0 ? 1 : 0) + (pastedText.trim() !== "" ? 1 : 0) + (localFiles?.length || 0);
+    const totalItems = selectedFiles.length + (urls.length > 0 ? 1 : 0) + (pastedText.trim() !== "" ? 1 : 0) + localFiles.length;
 
     setProcessingStatus({
       isProcessing: true,
@@ -213,7 +244,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
       }
 
       // 3. Process Local Files
-      if (localFiles && localFiles.length > 0) {
+      if (localFiles.length > 0) {
         setProcessingStatus(prev => ({
           ...prev,
           currentStep: `Processing ${localFiles.length} local file(s)...`,
@@ -277,7 +308,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
       const combinedContent = allContentSources.join("\n\n--- DOC SEPARATOR ---\n\n");
 
-      // Update progress status for OpenRouter API call (remaining progress up to 100%)
       setProcessingStatus(prev => ({
         ...prev,
         currentStep: "Analyzing with AI...",
@@ -285,8 +315,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
         processedFiles: totalItems, // All source items processed
       }));
       
-      // Call OpenRouter API with custom instructions if provided
-      // Integrate selected saved analyses into the prompt
       let finalUserPrompt = userPrompt;
       if (selectedAnalysisIdsForPrompt.length > 0) {
         const selectedAnalyses = savedAnalyses.filter(analysis => 
@@ -313,7 +341,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
         model: aiModel,
       });
 
-      // Show result
       setAiOutput(result);
       setProcessingStatus(prev => ({
         ...prev,
@@ -323,14 +350,13 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
       toast.success("Analysis completed successfully");
 
-      // Save the analysis
       const analysisSources: SavedAnalysisSource[] = [];
       selectedFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name }));
       urls.forEach(url => analysisSources.push({ type: 'url', name: url }));
       if (pastedText.trim() !== "") {
         analysisSources.push({ type: 'text', name: 'Pasted Text Content' });
       }
-      if (localFiles && localFiles.length > 0) {
+      if (localFiles.length > 0) {
         localFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name }));
       }
 
@@ -346,12 +372,10 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
       handleSaveAnalysis(newAnalysis);
       
-      // Clear selected analyses for prompt after use
       if (selectedAnalysisIdsForPrompt.length > 0) {
         selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id)); // This will clear the array
       }
 
-      // Reset processing state after a short delay
       setTimeout(() => {
         setProcessingStatus({
           isProcessing: false,
@@ -396,7 +420,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     setSavedPrompts(updatedPrompts);
     localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(updatedPrompts));
     
-    // Reset input fields
     setNewPromptTitle("");
     setNewPromptContent("");
     
@@ -422,7 +445,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     const value = e.target.value;
     setUserPrompt(value);
     
-    // Check if the last character is @ or /
     const lastChar = value.charAt(value.length - 1);
     if (lastChar === '@' || lastChar === '/') {
       setIsPromptCommandOpen(true);
@@ -512,9 +534,41 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
                   </Button>
 
                   <Button
-                    onClick={handleClearFiles}
-                    disabled={selectedFiles.length === 0}
+                    onClick={handleLocalFileInputClick}
+                    variant="outline"
                     className="flex-1"
+                  >
+                    <Upload className="mr-2" />
+                    Select Local Files
+                  </Button>
+
+                  <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="flex-1">
+                        <Combine className="mr-2 h-4 w-4" />
+                        Unified View
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-5xl h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                      </DialogHeader>
+                      <UnifiedContentView
+                        googleFiles={selectedFiles}
+                        localFiles={localFiles}
+                        pastedText={pastedText}
+                        urls={urls}
+                        userPrompt={userPrompt}
+                        customInstructions={customInstructionsForUnifiedView}
+                        accessToken={accessToken}
+                        isEditable={true}
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button
+                    onClick={handleClearFiles}
+                    disabled={selectedFiles.length === 0 && localFiles.length === 0}
                     variant="outline"
                   >
                     <Trash2 className="mr-2" />
@@ -524,12 +578,11 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
                 {/* File List Component */}
                 <FileList
-                  googleFiles={selectedFiles} // Renamed for clarity
-                  localFiles={localFiles}    // Pass localFiles
-                  displayFiles={displayFiles} // This might need adjustment if it's only for Google Files
-                  onRemoveGoogleFile={handleRemoveFile} // Renamed for clarity
-                  onClearGoogleFiles={handleClearFiles} // Renamed for clarity
-                  // onClearLocalFiles will be needed if we add a "clear local files" button here
+                  googleFiles={selectedFiles}
+                  localFiles={localFiles}
+                  displayFiles={displayFiles}
+                  onRemoveGoogleFile={handleRemoveFile}
+                  onClearGoogleFiles={handleClearFiles}
                   selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
                   savedAnalyses={savedAnalyses}
                 />
@@ -603,9 +656,9 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
           <Button
             onClick={handleRunAnalysis}
             disabled={
-              (!isSignedIn && selectedFiles.length > 0) || // Disable if not signed in AND trying to process files
-              (!isReady && selectedFiles.length > 0) || // Disable if picker not ready AND trying to process files
-              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && (!localFiles || localFiles.length === 0)) ||
+              (!isSignedIn && selectedFiles.length > 0) ||
+              (!isReady && selectedFiles.length > 0) ||
+              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) ||
               processingStatus.isProcessing
             }
             className="w-full sm:w-auto"
