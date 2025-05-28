@@ -2,31 +2,30 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { UnifiedContentView } from './UnifiedContentView'; // Adjust path as necessary
-import { toast } from 'sonner'; // Mock this
+import { UnifiedContentView } from './UnifiedContentView';
+import { toast } from 'sonner';
+import { vi, describe, beforeEach, test, expect } from 'vitest';
 
 // Mock sonner
-jest.mock('sonner', () => ({
+vi.mock('sonner', () => ({
   toast: {
-    success: jest.fn(),
-    error: jest.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
 // Mock navigator.clipboard
 Object.defineProperty(navigator, 'clipboard', {
   value: {
-    writeText: jest.fn().mockResolvedValue(undefined),
-    // readText: jest.fn().mockResolvedValue('mocked clipboard text'), // If needed for other tests
+    writeText: vi.fn().mockResolvedValue(undefined),
   },
   configurable: true,
 });
 
 // Mock the Markdown component to check its props and simulate basic rendering
-jest.mock('@/components/ui/markdown', () => ({
-  Markdown: jest.fn(({ content }) => <div data-testid="mocked-markdown">{content}</div>),
+vi.mock('@/components/ui/markdown', () => ({
+  Markdown: vi.fn(({ content }) => <div data-testid="mocked-markdown">{content}</div>),
 }));
-
 
 describe('UnifiedContentView', () => {
   const initialContent = "Line one\nLine two with searchterm\nLine three";
@@ -34,10 +33,10 @@ describe('UnifiedContentView', () => {
 
   beforeEach(() => {
     // Clear mocks before each test
-    (toast.success as jest.Mock).mockClear();
-    (toast.error as jest.Mock).mockClear(); // Also clear error if it's used
-    (navigator.clipboard.writeText as jest.Mock).mockClear();
-    (require('@/components/ui/markdown').Markdown as jest.Mock).mockClear();
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(navigator.clipboard.writeText).mockClear();
+    vi.mocked(require('@/components/ui/markdown').Markdown).mockClear();
   });
 
   test('renders with initial content and UI elements', () => {
@@ -102,7 +101,6 @@ describe('UnifiedContentView', () => {
     expect(screen.getByTestId('mocked-markdown')).toHaveTextContent("* A list item");
   });
 
-
   test('copy button copies content and shows toast', async () => {
     render(<UnifiedContentView initialContent={initialContent} />);
     const copyButton = screen.getByRole('button', { name: /copy content/i });
@@ -125,19 +123,18 @@ describe('UnifiedContentView', () => {
   });
 
   test('copy button shows error toast on failure', async () => {
-    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(new Error('Copy failed'));
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('Copy failed'));
     render(<UnifiedContentView initialContent={initialContent} />);
     const copyButton = screen.getByRole('button', { name: /copy content/i });
     fireEvent.click(copyButton);
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(initialContent);
-    await screen.findByText('Failed to copy content.'); // Wait for async toast error
+    await screen.findByText('Failed to copy content.');
     expect(toast.error).toHaveBeenCalledWith('Failed to copy content.');
   });
 
-
   test('displays editing message when isEditable is true', () => {
-    const mockOnContentChange = jest.fn();
+    const mockOnContentChange = vi.fn();
     render(
       <UnifiedContentView
         initialContent={initialContent}
@@ -153,7 +150,7 @@ describe('UnifiedContentView', () => {
     const newTypedContent = "new content";
     fireEvent.change(textarea, { target: { value: newTypedContent } });
     expect(mockOnContentChange).toHaveBeenCalledWith(newTypedContent);
-    expect(textarea).toHaveValue(newTypedContent); // also check if textarea value updates
+    expect(textarea).toHaveValue(newTypedContent);
   });
 
   test('content updates if initialContent prop changes', () => {
@@ -163,5 +160,4 @@ describe('UnifiedContentView', () => {
     rerender(<UnifiedContentView initialContent="Updated Content" />);
     expect(screen.getByRole('textbox')).toHaveValue('Updated Content');
   });
-
 });
