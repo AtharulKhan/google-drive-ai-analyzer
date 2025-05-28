@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -29,7 +30,7 @@ Object.defineProperty(window, 'localStorage', {
 const defaultCrawlingOptions: ApifyCrawlingOptions = {
   crawlerType: 'playwright:firefox',
   maxCrawlPages: 100,
-  maxCrawlingDepth: 10,
+  maxCrawlDepth: 10,
   maxConcurrency: 50,
   saveSnapshots: false,
   includeUrlGlobs: [],
