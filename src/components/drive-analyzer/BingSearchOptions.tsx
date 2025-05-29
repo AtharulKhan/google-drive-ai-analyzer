@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -9,34 +10,31 @@ interface BingSearchOptionsProps {
   onOptionChange: (optionName: keyof BingSearchScraperInput, value: any) => void;
 }
 
-// A small list of common countries for the dropdown. Can be expanded.
-const commonCountries = [
-  { value: 'US', label: 'United States' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'IN', label: 'India' },
-  { value: 'CN', label: 'China' },
-  { value: 'JP', label: 'Japan' },
-  { value: 'BR', label: 'Brazil' },
+const commonMarkets = [
+  { value: 'en-US', label: 'United States (en-US)' },
+  { value: 'en-GB', label: 'United Kingdom (en-GB)' },
+  { value: 'de-DE', label: 'Germany (de-DE)' },
+  { value: 'fr-FR', label: 'France (fr-FR)' },
+  { value: 'en-CA', label: 'Canada (en-CA)' },
+  { value: 'en-AU', label: 'Australia (en-AU)' },
+  { value: 'en-IN', label: 'India (en-IN)' },
+  { value: 'zh-CN', label: 'China (zh-CN)' },
+  { value: 'ja-JP', label: 'Japan (ja-JP)' },
+  { value: 'pt-BR', label: 'Brazil (pt-BR)' },
 ];
 
-// A small list of common languages. Can be expanded.
 const commonLanguages = [
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fr', label: 'French' },
-    { value: 'de', label: 'German' },
-    { value: 'zh', label: 'Chinese' },
-    { value: 'ja', label: 'Japanese' },
-    { value: 'pt', label: 'Portuguese' },
-    { value: 'ar', label: 'Arabic' },
-    { value: 'hi', label: 'Hindi' },
-    { value: 'ru', label: 'Russian' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'fr', label: 'French' },
+  { value: 'de', label: 'German' },
+  { value: 'zh-hans', label: 'Chinese (Simplified)' },
+  { value: 'ja', label: 'Japanese' },
+  { value: 'pt-br', label: 'Portuguese (Brazil)' },
+  { value: 'ar', label: 'Arabic' },
+  { value: 'hi', label: 'Hindi' },
+  { value: 'ru', label: 'Russian' },
 ];
-
 
 export function BingSearchOptions({ options, onOptionChange }: BingSearchOptionsProps) {
   return (
@@ -71,48 +69,47 @@ export function BingSearchOptions({ options, onOptionChange }: BingSearchOptions
         </div>
         
         <div className="space-y-1">
-          <Label htmlFor="country" className="text-sm">Country</Label>
+          <Label htmlFor="marketCode" className="text-sm">Market</Label>
           <Select
-            value={options.country || ''}
-            onValueChange={(value) => onOptionChange('country', value === '' ? undefined : value)}
+            value={options.marketCode || 'default'}
+            onValueChange={(value) => onOptionChange('marketCode', value === 'default' ? undefined : value)}
           >
-            <SelectTrigger id="country">
-              <SelectValue placeholder="Default (Actor)" />
+            <SelectTrigger id="marketCode">
+              <SelectValue placeholder="Default (Auto)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Default (Actor)</SelectItem>
-              {commonCountries.map(c => (
-                <SelectItem key={c.value} value={c.value}>{c.label} ({c.value})</SelectItem>
+              <SelectItem value="default">Default (Auto)</SelectItem>
+              {commonMarkets.map(market => (
+                <SelectItem key={market.value} value={market.value}>{market.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Country for search results (e.g., US, GB).
+            Market for search results localization.
           </p>
         </div>
 
         <div className="space-y-1">
           <Label htmlFor="languageCode" className="text-sm">Language</Label>
-           <Select
-            value={options.languageCode || ''}
-            onValueChange={(value) => onOptionChange('languageCode', value === '' ? undefined : value)}
+          <Select
+            value={options.languageCode || 'default'}
+            onValueChange={(value) => onOptionChange('languageCode', value === 'default' ? undefined : value)}
           >
             <SelectTrigger id="languageCode">
-              <SelectValue placeholder="Default (Actor)" />
+              <SelectValue placeholder="Default (Auto)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Default (Actor)</SelectItem>
+              <SelectItem value="default">Default (Auto)</SelectItem>
               {commonLanguages.map(lang => (
-                <SelectItem key={lang.value} value={lang.value}>{lang.label} ({lang.value})</SelectItem>
+                <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Language preference for search results (e.g., en, es).
+            Language preference for search results.
           </p>
         </div>
       </div>
-       {/* TODO: Add timerange if simple enough, or other fields */}
     </div>
   );
 }

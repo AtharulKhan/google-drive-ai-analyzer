@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -31,48 +32,32 @@ export function RssScraperOptions({ options, onOptionChange }: RssScraperOptions
       <div className="space-y-2">
         <div className="flex items-center space-x-2">
           <Checkbox
-            id="handleFromAtom"
-            checked={options.handleFromAtom === undefined ? true : options.handleFromAtom} // Default to true if undefined
-            onCheckedChange={(checked) => onOptionChange('handleFromAtom', !!checked)}
+            id="header"
+            checked={options.header === undefined ? false : options.header}
+            onCheckedChange={(checked) => onOptionChange('header', !!checked)}
           />
-          <Label htmlFor="handleFromAtom" className="text-sm">
-            Enable Atom Feed Handling
+          <Label htmlFor="header" className="text-sm">
+            Include Header Info
           </Label>
         </div>
         <p className="text-xs text-muted-foreground pl-6">
-          Process items specific to Atom feeds (e.g. content, summary, updated).
+          Include header information at the beginning of results.
         </p>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center space-x-2">
           <Checkbox
-            id="handleFromRdf"
-            checked={options.handleFromRdf === undefined ? true : options.handleFromRdf} // Default to true if undefined
-            onCheckedChange={(checked) => onOptionChange('handleFromRdf', !!checked)}
+            id="dev_no_strip"
+            checked={options.dev_no_strip || false}
+            onCheckedChange={(checked) => onOptionChange('dev_no_strip', !!checked)}
           />
-          <Label htmlFor="handleFromRdf" className="text-sm">
-            Enable RDF Feed Handling
+          <Label htmlFor="dev_no_strip" className="text-sm">
+            Disable Data Cleansing
           </Label>
         </div>
         <p className="text-xs text-muted-foreground pl-6">
-          Process items specific to RDF feeds (e.g. dc:creator, dc:date).
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="xmlToJson"
-            checked={options.xmlToJson || false}
-            onCheckedChange={(checked) => onOptionChange('xmlToJson', !!checked)}
-          />
-          <Label htmlFor="xmlToJson" className="text-sm">
-            Convert XML to JSON
-          </Label>
-        </div>
-        <p className="text-xs text-muted-foreground pl-6">
-          Include a JSON representation of the original XML (mainly for debugging).
+          Keep/Save empty values (NULL, FALSE, empty arrays, etc.).
         </p>
       </div>
     </div>
