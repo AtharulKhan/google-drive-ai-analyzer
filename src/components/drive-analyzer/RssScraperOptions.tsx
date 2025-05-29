@@ -32,32 +32,16 @@ export function RssScraperOptions({ options, onOptionChange }: RssScraperOptions
       <div className="space-y-2">
         <div className="flex items-center space-x-2">
           <Checkbox
-            id="dev_dataset_clear"
-            checked={options.dev_dataset_clear || false}
-            onCheckedChange={(checked) => onOptionChange('dev_dataset_clear', !!checked)}
+            id="header"
+            checked={options.header || false}
+            onCheckedChange={(checked) => onOptionChange('header', !!checked)}
           />
-          <Label htmlFor="dev_dataset_clear" className="text-sm">
-            Clear Storage
+          <Label htmlFor="header" className="text-sm">
+            Include Header Info
           </Label>
         </div>
         <p className="text-xs text-muted-foreground pl-6">
-          Clear Dataset before insert/update.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="dev_no_strip"
-            checked={options.dev_no_strip || false}
-            onCheckedChange={(checked) => onOptionChange('dev_no_strip', !!checked)}
-          />
-          <Label htmlFor="dev_no_strip" className="text-sm">
-            Disable Data Cleansing
-          </Label>
-        </div>
-        <p className="text-xs text-muted-foreground pl-6">
-          Keep/Save empty values (NULL, FALSE, empty arrays, etc.).
+          Include header information at the beginning of results.
         </p>
       </div>
     </div>
