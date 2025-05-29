@@ -11,21 +11,39 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderOpen, Loader2, RefreshCw, Settings, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, Combine, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker } from "@/hooks/useDrivePicker";
 import { fetchFileContent } from "@/utils/google-api";
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
 import { getDefaultAIModel } from "@/utils/ai-models";
-import { analyzeMultipleUrlsWithApify } from "@/utils/apify-api";
-import useAnalysisState, { 
+import { 
+  analyzeMultipleUrlsWithApify, 
+  extractArticleWithApify,
+  searchWithBingScraper,
+  scrapeRssFeedWithApify,
+  ArticleExtractorSmartInput,
+  BingSearchScraperInput,
+  RssXmlScraperInput,
+  ApifyCrawlingOptions 
+} from "@/utils/apify-api";
+import useAnalysisState, {
   CUSTOM_INSTRUCTIONS_KEY,
   SAVED_PROMPTS_KEY,
   SavedPrompt,
   SavedAnalysis
 } from "@/hooks/useAnalysisState";
 import { processLocalFiles } from "@/utils/local-file-processor";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { UnifiedContentView } from '@/components/common/UnifiedContentView';
 
 // Import our components
 import { FileList } from "./drive-analyzer/FileList";
@@ -33,7 +51,7 @@ import { TextUrlInput } from "./drive-analyzer/TextUrlInput";
 import { SavedPrompts } from "./drive-analyzer/SavedPrompts";
 import { SavedAnalysesSidebar } from "./drive-analyzer/SavedAnalysesSidebar"; 
 import { SavedAnalysisDetailView, SavedAnalysisSource } from "./drive-analyzer/SavedAnalysisDetailView";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { History } from "lucide-react";
 import { PromptSelector } from "./drive-analyzer/PromptSelector";
 import { AnalysisResults } from "./drive-analyzer/AnalysisResults";
@@ -43,11 +61,7 @@ import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
 const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
 
-interface DriveAnalyzerProps {
-  localFiles?: File[]; // Added prop for local files
-}
-
-export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // Destructure localFiles
+export default function DriveAnalyzer() {
   // Use our custom hook for state management
   const {
     // Files
@@ -95,11 +109,32 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     toggleAnalysisSelectionForPrompt,
   } = useAnalysisState();
 
+  // Local state
+  const [localFiles, setLocalFiles] = useState<File[]>([]);
+  const [isUnifiedViewOpen, setIsUnifiedViewOpen] = useState(false);
+
   // State variables
   const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
   const [maxFiles, setMaxFiles] = useState<number>(DEFAULT_MAX_FILES);
   const [includeSubfolders, setIncludeSubfolders] = useState(true);
   const [customInstructions, setCustomInstructions] = useState<string>("");
+
+  // --- Apify Actor State ---
+  const ACTOR_WEBSITE_CRAWLER = "website-crawler";
+  const ACTOR_ARTICLE_EXTRACTOR = "article-extractor";
+  const ACTOR_BING_SEARCH = "bing-search";
+  const ACTOR_RSS_SCRAPER = "rss-scraper";
+
+  const [selectedActor, setSelectedActor] = useState<string>(ACTOR_WEBSITE_CRAWLER);
+
+  // Inputs for different actors - kept simple for now
+  const [articleExtractorUrl, setArticleExtractorUrl] = useState<string>("");
+  const [bingSearchQuery, setBingSearchQuery] = useState<string>("");
+  // TODO: Add more specific Bing options if needed, e.g., country, numresults
+  // const [bingSearchOptions, setBingSearchOptions] = useState<Partial<BingSearchScraperInput>>({}); 
+  const [rssFeedUrl, setRssFeedUrl] = useState<string>("");
+  // --- End Apify Actor State ---
+
   const [newPromptTitle, setNewPromptTitle] = useState("");
   const [newPromptContent, setNewPromptContent] = useState("");
   const [isPromptCommandOpen, setIsPromptCommandOpen] = useState(false);
@@ -126,6 +161,25 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     }
   }, [customInstructions]);
 
+  // Handle local file selection
+  const handleLocalFilesSelected = useCallback((files: File[]) => {
+    setLocalFiles(files);
+  }, []);
+
+  // Handle local file input
+  const handleLocalFileInputClick = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files) {
+        handleLocalFilesSelected(Array.from(files));
+      }
+    };
+    input.click();
+  }, [handleLocalFilesSelected]);
+
   // Handle browsing Google Drive and selecting files
   const handleBrowseDrive = useCallback(() => {
     if (!isReady) {
@@ -142,6 +196,11 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     });
   }, [isReady, openPicker, handleAddFiles]);
 
+  // Load custom instructions for unified view
+  const customInstructionsForUnifiedView = React.useMemo(() => {
+    return localStorage.getItem('drive-analyzer-custom-instructions') || '';
+  }, [isUnifiedViewOpen]);
+
   // Updated process files and send to OpenRouter for analysis with local file support
   const handleRunAnalysis = useCallback(async () => {
     if (!accessToken && selectedFiles.length > 0) { // Only require accessToken if Drive files are selected
@@ -149,7 +208,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
       return;
     }
 
-    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && (!localFiles || localFiles.length === 0)) {
+    if (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) {
       toast.error("Please select files, paste text, or add URLs to analyze.");
       return;
     }
@@ -159,8 +218,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
       return;
     }
 
-    // Determine the total number of items to process for progress calculation
-    const totalItems = selectedFiles.length + (urls.length > 0 ? 1 : 0) + (pastedText.trim() !== "" ? 1 : 0) + (localFiles?.length || 0);
+    const totalItems = selectedFiles.length + (urls.length > 0 ? 1 : 0) + (pastedText.trim() !== "" ? 1 : 0) + localFiles.length;
 
     setProcessingStatus({
       isProcessing: true,
@@ -188,18 +246,81 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
           processedFiles: itemsProcessed - 1, // visually show progress on current item
         }));
         
-        const apifyResult = await analyzeMultipleUrlsWithApify(urls, crawlingOptions);
-        
-        if (apifyResult.failedUrls.length > 0) {
-          toast.warning(`Failed to analyze: ${apifyResult.failedUrls.join(', ')}`);
+        // --- APPY ACTOR LOGIC ---
+        if (selectedActor === ACTOR_WEBSITE_CRAWLER && urls.length > 0) {
+          itemsProcessed++;
+          setProcessingStatus(prev => ({
+            ...prev,
+            currentStep: `Analyzing ${urls.length} URL(s) with Website Content Crawler...`,
+            progress: Math.round((itemsProcessed / totalItems) * 15),
+            processedFiles: itemsProcessed - 1,
+          }));
+          const apifyResult = await analyzeMultipleUrlsWithApify(urls, crawlingOptions);
+          if (apifyResult.failedUrls.length > 0) {
+            toast.warning(`Failed to analyze: ${apifyResult.failedUrls.join(', ')}`);
+          }
+          if (apifyResult.combinedAnalyzedText.trim() !== "") {
+            allContentSources.push(`### Website Crawler Output for: ${urls.join(', ')}\n\n${apifyResult.combinedAnalyzedText.trim()}`);
+          }
+          currentProgress = 15;
+        } else if (selectedActor === ACTOR_ARTICLE_EXTRACTOR && articleExtractorUrl.trim() !== "") {
+          itemsProcessed++;
+           setProcessingStatus(prev => ({
+            ...prev,
+            currentStep: `Extracting article from ${articleExtractorUrl}...`,
+            progress: Math.round((itemsProcessed / totalItems) * 15),
+            processedFiles: itemsProcessed - 1,
+          }));
+          const articleInput: ArticleExtractorSmartInput = { url: articleExtractorUrl };
+          const articleResult = await extractArticleWithApify(articleInput);
+          if (articleResult.error) {
+            toast.warning(`Failed to extract article from ${articleExtractorUrl}: ${articleResult.error}`);
+          }
+          if (articleResult.analyzedText.trim() !== "") {
+            allContentSources.push(`### Article Extractor Output for: ${articleExtractorUrl}\n\n${articleResult.analyzedText.trim()}`);
+          }
+          currentProgress = 15;
+        } else if (selectedActor === ACTOR_BING_SEARCH && bingSearchQuery.trim() !== "") {
+          itemsProcessed++;
+          setProcessingStatus(prev => ({
+            ...prev,
+            currentStep: `Searching Bing for "${bingSearchQuery}"...`,
+            progress: Math.round((itemsProcessed / totalItems) * 15),
+            processedFiles: itemsProcessed - 1,
+          }));
+          const bingInput: BingSearchScraperInput = { searchqueries: bingSearchQuery };
+          // Add other options like country, numresults to bingInput if implemented
+          const bingResult = await searchWithBingScraper(bingInput);
+          if (bingResult.error) {
+            toast.warning(`Bing search failed for "${bingSearchQuery}": ${bingResult.error}`);
+          }
+          if (bingResult.analyzedText.trim() !== "") {
+            allContentSources.push(`### Bing Search Output for: "${bingSearchQuery}"\n\n${bingResult.analyzedText.trim()}`);
+          }
+          currentProgress = 15;
+        } else if (selectedActor === ACTOR_RSS_SCRAPER && rssFeedUrl.trim() !== "") {
+          itemsProcessed++;
+          setProcessingStatus(prev => ({
+            ...prev,
+            currentStep: `Scraping RSS feed from ${rssFeedUrl}...`,
+            progress: Math.round((itemsProcessed / totalItems) * 15),
+            processedFiles: itemsProcessed - 1,
+          }));
+          const rssInput: RssXmlScraperInput = { rssUrls: [rssFeedUrl] };
+          const rssResult = await scrapeRssFeedWithApify(rssInput);
+          if (rssResult.error) {
+            toast.warning(`Failed to scrape RSS feed from ${rssFeedUrl}: ${rssResult.error}`);
+          }
+          if (rssResult.analyzedText.trim() !== "") {
+            allContentSources.push(`### RSS Feed Output for: ${rssFeedUrl}\n\n${rssResult.analyzedText.trim()}`);
+          }
+          currentProgress = 15;
         }
-        if (apifyResult.combinedAnalyzedText.trim() !== "") {
-          allContentSources.push(apifyResult.combinedAnalyzedText.trim());
-        }
-        currentProgress = 15; // Mark URL analysis as 15% done
+        // --- END APPY ACTOR LOGIC ---
       }
 
-      // 2. Process Pasted Text
+
+      // Process Pasted Text (moved after Apify actor logic)
       if (pastedText.trim() !== "") {
         itemsProcessed++;
         setProcessingStatus(prev => ({
@@ -213,7 +334,7 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
       }
 
       // 3. Process Local Files
-      if (localFiles && localFiles.length > 0) {
+      if (localFiles.length > 0) {
         setProcessingStatus(prev => ({
           ...prev,
           currentStep: `Processing ${localFiles.length} local file(s)...`,
@@ -277,7 +398,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
       const combinedContent = allContentSources.join("\n\n--- DOC SEPARATOR ---\n\n");
 
-      // Update progress status for OpenRouter API call (remaining progress up to 100%)
       setProcessingStatus(prev => ({
         ...prev,
         currentStep: "Analyzing with AI...",
@@ -285,8 +405,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
         processedFiles: totalItems, // All source items processed
       }));
       
-      // Call OpenRouter API with custom instructions if provided
-      // Integrate selected saved analyses into the prompt
       let finalUserPrompt = userPrompt;
       if (selectedAnalysisIdsForPrompt.length > 0) {
         const selectedAnalyses = savedAnalyses.filter(analysis => 
@@ -313,7 +431,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
         model: aiModel,
       });
 
-      // Show result
       setAiOutput(result);
       setProcessingStatus(prev => ({
         ...prev,
@@ -323,15 +440,23 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
       toast.success("Analysis completed successfully");
 
-      // Save the analysis
       const analysisSources: SavedAnalysisSource[] = [];
-      selectedFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name }));
-      urls.forEach(url => analysisSources.push({ type: 'url', name: url }));
-      if (pastedText.trim() !== "") {
-        analysisSources.push({ type: 'text', name: 'Pasted Text Content' });
+      selectedFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name, actor: ACTOR_WEBSITE_CRAWLER })); // Default or adjust if files are used by other actors
+      if (selectedActor === ACTOR_WEBSITE_CRAWLER) {
+        urls.forEach(url => analysisSources.push({ type: 'url', name: url, actor: ACTOR_WEBSITE_CRAWLER }));
+      } else if (selectedActor === ACTOR_ARTICLE_EXTRACTOR && articleExtractorUrl.trim() !== "") {
+        analysisSources.push({ type: 'url', name: articleExtractorUrl, actor: ACTOR_ARTICLE_EXTRACTOR });
+      } else if (selectedActor === ACTOR_BING_SEARCH && bingSearchQuery.trim() !== "") {
+        analysisSources.push({ type: 'search', name: bingSearchQuery, actor: ACTOR_BING_SEARCH });
+      } else if (selectedActor === ACTOR_RSS_SCRAPER && rssFeedUrl.trim() !== "") {
+        analysisSources.push({ type: 'feed', name: rssFeedUrl, actor: ACTOR_RSS_SCRAPER });
       }
-      if (localFiles && localFiles.length > 0) {
-        localFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name }));
+      
+      if (pastedText.trim() !== "") {
+        analysisSources.push({ type: 'text', name: 'Pasted Text Content', actor: selectedActor });
+      }
+      if (localFiles.length > 0) {
+        localFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name, actor: selectedActor })); // Assuming local files are processed in context of current actor
       }
 
       const currentTimestamp = Date.now();
@@ -346,12 +471,10 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
       handleSaveAnalysis(newAnalysis);
       
-      // Clear selected analyses for prompt after use
       if (selectedAnalysisIdsForPrompt.length > 0) {
         selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id)); // This will clear the array
       }
 
-      // Reset processing state after a short delay
       setTimeout(() => {
         setProcessingStatus({
           isProcessing: false,
@@ -396,7 +519,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     setSavedPrompts(updatedPrompts);
     localStorage.setItem(SAVED_PROMPTS_KEY, JSON.stringify(updatedPrompts));
     
-    // Reset input fields
     setNewPromptTitle("");
     setNewPromptContent("");
     
@@ -422,7 +544,6 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
     const value = e.target.value;
     setUserPrompt(value);
     
-    // Check if the last character is @ or /
     const lastChar = value.charAt(value.length - 1);
     if (lastChar === '@' || lastChar === '/') {
       setIsPromptCommandOpen(true);
@@ -500,36 +621,111 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
 
             <TabsContent value="files">
               <div className="space-y-6">
-                {/* File Selection Section */}
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                  <Button
-                    onClick={handleBrowseDrive}
-                    disabled={!isSignedIn || !isReady}
-                    className="flex-1"
-                  >
-                    <FolderOpen className="mr-2" />
-                    Add Files from Google Drive
-                  </Button>
+                {/* File Selection Section - Now includes saved prompts and analysis buttons */}
+                <TooltipProvider>
+                  <div className="flex items-center justify-center gap-2 mb-6">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleBrowseDrive}
+                          disabled={!isSignedIn || !isReady}
+                          size="icon"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Add Files from Google Drive</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-                  <Button
-                    onClick={handleClearFiles}
-                    disabled={selectedFiles.length === 0}
-                    className="flex-1"
-                    variant="outline"
-                  >
-                    <Trash2 className="mr-2" />
-                    Clear All Files
-                  </Button>
-                </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleLocalFileInputClick}
+                          size="icon"
+                          variant="outline"
+                        >
+                          <Upload className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Select Local Files</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DialogTrigger asChild>
+                            <Button size="icon" variant="outline">
+                              <Combine className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Unified Content View</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <DialogContent className="max-w-5xl h-[80vh]">
+                        <DialogHeader>
+                          <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                        </DialogHeader>
+                        <UnifiedContentView
+                          googleFiles={selectedFiles}
+                          localFiles={localFiles}
+                          pastedText={pastedText}
+                          urls={urls}
+                          userPrompt={userPrompt}
+                          customInstructions={customInstructionsForUnifiedView}
+                          accessToken={accessToken}
+                          isEditable={true}
+                        />
+                      </DialogContent>
+                    </Dialog>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleClearFiles}
+                          disabled={selectedFiles.length === 0 && localFiles.length === 0}
+                          size="icon"
+                          variant="outline"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Clear All Files</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* Saved Prompts and Analysis Buttons */}
+                    <SavedPrompts
+                      savedPrompts={savedPrompts}
+                      newPromptTitle={newPromptTitle}
+                      setNewPromptTitle={setNewPromptTitle}
+                      newPromptContent={newPromptContent}
+                      setNewPromptContent={setNewPromptContent}
+                      onSavePrompt={handleSavePrompt}
+                      onDeletePrompt={handleDeletePrompt}
+                    />
+                    
+                    <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)}>
+                      <History className="h-4 w-4" />
+                      <span className="sr-only">View Saved Analyses</span>
+                    </Button>
+                  </div>
+                </TooltipProvider>
 
                 {/* File List Component */}
                 <FileList
-                  googleFiles={selectedFiles} // Renamed for clarity
-                  localFiles={localFiles}    // Pass localFiles
-                  displayFiles={displayFiles} // This might need adjustment if it's only for Google Files
-                  onRemoveGoogleFile={handleRemoveFile} // Renamed for clarity
-                  onClearGoogleFiles={handleClearFiles} // Renamed for clarity
-                  // onClearLocalFiles will be needed if we add a "clear local files" button here
+                  googleFiles={selectedFiles}
+                  localFiles={localFiles}
+                  displayFiles={displayFiles}
+                  onRemoveGoogleFile={handleRemoveFile}
+                  onClearGoogleFiles={handleClearFiles}
                   selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
                   savedAnalyses={savedAnalyses}
                 />
@@ -580,6 +776,20 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
                       onClearUrls={handleClearUrls}
                       currentUrlInput={currentUrlInput}
                       onCurrentUrlInputChange={setCurrentUrlInput}
+                      // Apify Actor Props
+                      selectedActor={selectedActor}
+                      onSelectedActorChange={setSelectedActor}
+                      actorWebsiteCrawler={ACTOR_WEBSITE_CRAWLER}
+                      actorArticleExtractor={ACTOR_ARTICLE_EXTRACTOR}
+                      actorBingSearch={ACTOR_BING_SEARCH}
+                      actorRssScraper={ACTOR_RSS_SCRAPER}
+                      articleExtractorUrl={articleExtractorUrl}
+                      onArticleExtractorUrlChange={setArticleExtractorUrl}
+                      bingSearchQuery={bingSearchQuery}
+                      onBingSearchQueryChange={setBingSearchQuery}
+                      rssFeedUrl={rssFeedUrl}
+                      onRssFeedUrlChange={setRssFeedUrl}
+                      // Crawling options for website crawler
                       crawlingOptions={crawlingOptions}
                       onCrawlingOptionsChange={handleCrawlingOptionsChange}
                     />
@@ -603,9 +813,17 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
           <Button
             onClick={handleRunAnalysis}
             disabled={
-              (!isSignedIn && selectedFiles.length > 0) || // Disable if not signed in AND trying to process files
-              (!isReady && selectedFiles.length > 0) || // Disable if picker not ready AND trying to process files
-              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && (!localFiles || localFiles.length === 0)) ||
+              (!isSignedIn && selectedFiles.length > 0) ||
+              (!isReady && selectedFiles.length > 0) || // Google Drive files need picker
+              (
+                selectedFiles.length === 0 && 
+                pastedText.trim() === "" && 
+                localFiles.length === 0 &&
+                (selectedActor === ACTOR_WEBSITE_CRAWLER && urls.length === 0) &&
+                (selectedActor === ACTOR_ARTICLE_EXTRACTOR && articleExtractorUrl.trim() === "") &&
+                (selectedActor === ACTOR_BING_SEARCH && bingSearchQuery.trim() === "") &&
+                (selectedActor === ACTOR_RSS_SCRAPER && rssFeedUrl.trim() === "")
+              ) ||
               processingStatus.isProcessing
             }
             className="w-full sm:w-auto"
@@ -651,7 +869,12 @@ export default function DriveAnalyzer({ localFiles }: DriveAnalyzerProps) { // D
               <DialogTitle>{viewingAnalysis.title}</DialogTitle>
             </DialogHeader>
             <div className="overflow-y-auto flex-grow pr-6">
-              <SavedAnalysisDetailView analysis={viewingAnalysis} />
+              <SavedAnalysisDetailView analysis={viewingAnalysis} actorConstants={{
+                  ACTOR_WEBSITE_CRAWLER,
+                  ACTOR_ARTICLE_EXTRACTOR,
+                  ACTOR_BING_SEARCH,
+                  ACTOR_RSS_SCRAPER
+              }} />
             </div>
             <DialogFooter className="mt-auto pt-4">
               <DialogClose asChild>

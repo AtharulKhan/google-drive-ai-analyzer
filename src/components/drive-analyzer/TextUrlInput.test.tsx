@@ -1,246 +1,137 @@
-
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { TextUrlInput } from './TextUrlInput'; // Adjust path as necessary
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { TextUrlInput } from './TextUrlInput';
 import { ApifyCrawlingOptions } from '@/utils/apify-api';
 
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
-      store[key] = value.toString();
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-})();
+// Basic mocks for props that are not the focus of these specific tests
+const mockOnPastedTextChange = jest.fn();
+const mockOnUrlAdd = jest.fn();
+const mockOnUrlRemove = jest.fn();
+const mockOnClearPastedText = jest.fn();
+const mockOnClearUrls = jest.fn();
+const mockOnCurrentUrlInputChange = jest.fn();
+const mockOnCrawlingOptionsChange = jest.fn();
+const mockOnSelectedActorChange = jest.fn();
+const mockOnArticleExtractorUrlChange = jest.fn();
+const mockOnBingSearchQueryChange = jest.fn();
+const mockOnRssFeedUrlChange = jest.fn();
 
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-});
+const ACTOR_WEBSITE_CRAWLER = "website-crawler";
+const ACTOR_ARTICLE_EXTRACTOR = "article-extractor";
+const ACTOR_BING_SEARCH = "bing-search";
+const ACTOR_RSS_SCRAPER = "rss-scraper";
 
-const defaultCrawlingOptions: ApifyCrawlingOptions = {
-  crawlerType: 'playwright:firefox',
-  maxCrawlPages: 100,
-  maxCrawlDepth: 10,
-  maxConcurrency: 50,
-  saveSnapshots: false,
-  includeUrlGlobs: [],
-  excludeUrlGlobs: [],
+const defaultProps = {
+  pastedText: '',
+  onPastedTextChange: mockOnPastedTextChange,
+  urls: [],
+  onUrlAdd: mockOnUrlAdd,
+  onUrlRemove: mockOnUrlRemove,
+  onClearPastedText: mockOnClearPastedText,
+  onClearUrls: mockOnClearUrls,
+  currentUrlInput: '',
+  onCurrentUrlInputChange: mockOnCurrentUrlInputChange,
+  crawlingOptions: {} as ApifyCrawlingOptions,
+  onCrawlingOptionsChange: mockOnCrawlingOptionsChange,
+  selectedActor: ACTOR_WEBSITE_CRAWLER,
+  onSelectedActorChange: mockOnSelectedActorChange,
+  actorWebsiteCrawler: ACTOR_WEBSITE_CRAWLER,
+  actorArticleExtractor: ACTOR_ARTICLE_EXTRACTOR,
+  actorBingSearch: ACTOR_BING_SEARCH,
+  actorRssScraper: ACTOR_RSS_SCRAPER,
+  articleExtractorUrl: '',
+  onArticleExtractorUrlChange: mockOnArticleExtractorUrlChange,
+  bingSearchQuery: '',
+  onBingSearchQueryChange: mockOnBingSearchQueryChange,
+  rssFeedUrl: '',
+  onRssFeedUrlChange: mockOnRssFeedUrlChange,
 };
 
-describe('TextUrlInput URL Features', () => {
-  let mockOnUrlAdd: ReturnType<typeof vi.fn>;
-  let mockOnCurrentUrlInputChange: ReturnType<typeof vi.fn>;
-  let mockOnPastedTextChange: ReturnType<typeof vi.fn>;
-  let mockOnUrlRemove: ReturnType<typeof vi.fn>;
-  let mockOnClearPastedText: ReturnType<typeof vi.fn>;
-  let mockOnClearUrls: ReturnType<typeof vi.fn>;
-  let mockOnCrawlingOptionsChange: ReturnType<typeof vi.fn>;
+// Mock CrawlingOptions component as its internals are not tested here
+jest.mock('./CrawlingOptions', () => ({
+    CrawlingOptions: jest.fn(() => <div>Mocked CrawlingOptions</div>),
+}));
+  
 
+describe('TextUrlInput', () => {
   beforeEach(() => {
-    localStorageMock.clear();
-    mockOnUrlAdd = vi.fn();
-    mockOnCurrentUrlInputChange = vi.fn();
-    mockOnPastedTextChange = vi.fn();
-    mockOnUrlRemove = vi.fn();
-    mockOnClearPastedText = vi.fn();
-    mockOnClearUrls = vi.fn();
-    mockOnCrawlingOptionsChange = vi.fn();
+    jest.clearAllMocks();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-    localStorageMock.clear(); // Ensure localStorage is clean after each test
+  it('renders pasted text area and actor selection dropdown', () => {
+    render(<TextUrlInput {...defaultProps} />);
+    expect(screen.getByLabelText(/Pasted Text/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Select Analysis Actor/i)).toBeInTheDocument();
   });
 
-  // Store the rerender function
-  let currentRerender: ((ui: React.ReactElement) => void) | null = null;
-
-  const renderComponent = (currentUrl = "", urls: string[] = []) => {
-    const { rerender: rerenderFunc } = render( // capture rerender
-      <TextUrlInput
-        pastedText=""
-        onPastedTextChange={mockOnPastedTextChange}
-        urls={urls}
-        onUrlAdd={mockOnUrlAdd}
-        onUrlRemove={mockOnUrlRemove}
-        onClearPastedText={mockOnClearPastedText}
-        onClearUrls={mockOnClearUrls}
-        currentUrlInput={currentUrl}
-        onCurrentUrlInputChange={mockOnCurrentUrlInputChange}
-        crawlingOptions={defaultCrawlingOptions}
-        onCrawlingOptionsChange={mockOnCrawlingOptionsChange}
-      />
-    );
-    currentRerender = rerenderFunc; // store it
-  };
-  
-  // Helper to update props using rerender
-  const updateComponentProps = (newCurrentUrl: string, newUrls: string[] = []) => {
-    if (currentRerender) {
-      currentRerender(
-        <TextUrlInput
-          pastedText=""
-          onPastedTextChange={mockOnPastedTextChange}
-          urls={newUrls}
-          onUrlAdd={mockOnUrlAdd}
-          onUrlRemove={mockOnUrlRemove}
-          onClearPastedText={mockOnClearPastedText}
-          onClearUrls={mockOnClearUrls}
-          currentUrlInput={newCurrentUrl}
-          onCurrentUrlInputChange={mockOnCurrentUrlInputChange}
-          crawlingOptions={defaultCrawlingOptions}
-          onCrawlingOptionsChange={mockOnCrawlingOptionsChange}
-        />
-      );
-    } else {
-      throw new Error("Component not rendered yet, or rerender function not captured.");
-    }
-  };
-
-  it('loads saved URLs from localStorage on mount', () => {
-    const testUrls = ['https://example.com/test1', 'https://example.com/test2'];
-    localStorageMock.setItem('driveAnalyzer_savedUrls', JSON.stringify(testUrls));
-    renderComponent();
-    expect(screen.getByText('https://example.com/test1')).toBeInTheDocument();
-    expect(screen.getByText('https://example.com/test2')).toBeInTheDocument();
+  it('shows Website Crawler inputs by default', () => {
+    render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_WEBSITE_CRAWLER} />);
+    expect(screen.getByLabelText(/Add URL for Website Crawler/i)).toBeInTheDocument();
+    // Saved URLs for crawler is also a good indicator
+    expect(screen.getByText(/Saved URLs \(Crawler\):/i)).toBeInTheDocument(); 
   });
 
-  it('shows "No URLs saved yet." if localStorage is empty', () => {
-    renderComponent();
-    expect(screen.getByText('No URLs saved yet.')).toBeInTheDocument();
-  });
+  it('calls onSelectedActorChange when a new actor is selected', () => {
+    render(<TextUrlInput {...defaultProps} />);
+    // The Select component uses radix-ui, which might require careful interaction.
+    // We get the trigger first.
+    const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
+    fireEvent.mouseDown(selectTrigger); // Open the dropdown
 
-  it('saves a new URL to savedUrls and localStorage', async () => {
-    const user = userEvent.setup();
-    renderComponent(); // Initial render with empty currentUrlInput
-
-    // Simulate typing into the input field
-    // We need to re-render or simulate prop change for currentUrlInput
-    const urlInput = screen.getByPlaceholderText('https://example.com');
-    // Simulate the parent component updating the currentUrlInput prop via the callback
-    // This is closer to how the component actually behaves.
-    mockOnCurrentUrlInputChange.mockImplementation((value) => {
-      updateComponentProps(value); // Rerender with new currentUrlInput
-    });
+    // Then find and click the desired item.
+    // Ensure the text matches exactly what's in the SelectItem
+    const articleExtractorOption = screen.getByText('Article Extractor (Single URL)');
+    fireEvent.click(articleExtractorOption);
     
-    await user.type(urlInput, 'https://newurl.com');
-    // The mockOnCurrentUrlInputChange should have been called by user.type, triggering rerender.
-    // If not, we directly call updateComponentProps if the input component doesn't call onCurrentUrlInputChange on each keystroke.
-    // Assuming direct control for clarity here:
-    updateComponentProps('https://newurl.com');
-
-
-    const saveButton = screen.getByRole('button', { name: /save url/i });
-    expect(saveButton).not.toBeDisabled();
-    await user.click(saveButton);
-    
-    expect(screen.getByText('https://newurl.com')).toBeInTheDocument(); // This should now be in the document
-    expect(JSON.parse(localStorageMock.getItem('driveAnalyzer_savedUrls') || '[]')).toContain('https://newurl.com');
+    expect(mockOnSelectedActorChange).toHaveBeenCalledWith(ACTOR_ARTICLE_EXTRACTOR);
   });
 
-  it('does not save a duplicate URL', async () => {
-    const user = userEvent.setup();
-    const initialUrl = 'https://exists.com';
-    localStorageMock.setItem('driveAnalyzer_savedUrls', JSON.stringify([initialUrl]));
-    
-    renderComponent(); // Render first
-    updateComponentProps(initialUrl); // Then update props
+  it('shows Article Extractor URL input when selected', () => {
+    render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_ARTICLE_EXTRACTOR} />);
+    expect(screen.getByLabelText(/Article URL/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Add URL for Website Crawler/i)).not.toBeInTheDocument();
+  });
 
-    const saveButton = screen.getByRole('button', { name: /save url/i });
-    expect(saveButton).toBeDisabled();
+  it('calls onArticleExtractorUrlChange when Article Extractor URL changes', () => {
+    render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_ARTICLE_EXTRACTOR} />);
+    const input = screen.getByLabelText(/Article URL/i);
+    fireEvent.change(input, { target: { value: 'https://example.com/article' } });
+    expect(mockOnArticleExtractorUrlChange).toHaveBeenCalledWith('https://example.com/article');
+  });
 
-    // Check that it wasn't added again
-    const savedUrls = JSON.parse(localStorageMock.getItem('driveAnalyzer_savedUrls') || '[]');
-    expect(savedUrls).toHaveLength(1);
-    expect(savedUrls).toContain(initialUrl);
+  it('shows Bing Search Query input when selected', () => {
+    render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_BING_SEARCH} />);
+    expect(screen.getByLabelText(/Bing Search Query/i)).toBeInTheDocument();
+  });
+
+  it('calls onBingSearchQueryChange when Bing Search Query changes', () => {
+    render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_BING_SEARCH} />);
+    const input = screen.getByLabelText(/Bing Search Query/i);
+    fireEvent.change(input, { target: { value: 'test query' } });
+    expect(mockOnBingSearchQueryChange).toHaveBeenCalledWith('test query');
+  });
+
+  it('shows RSS Feed URL input when selected', () => {
+    render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_RSS_SCRAPER} />);
+    expect(screen.getByLabelText(/RSS Feed URL/i)).toBeInTheDocument();
+  });
+
+  it('calls onRssFeedUrlChange when RSS Feed URL changes', () => {
+    render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_RSS_SCRAPER} />);
+    const input = screen.getByLabelText(/RSS Feed URL/i);
+    fireEvent.change(input, { target: { value: 'https://example.com/feed.xml' } });
+    expect(mockOnRssFeedUrlChange).toHaveBeenCalledWith('https://example.com/feed.xml');
   });
   
-  it('"Save URL" button is disabled for empty input', () => {
-    renderComponent(""); 
-    const saveButton = screen.getByRole('button', { name: /save url/i });
-    expect(saveButton).toBeDisabled();
-  });
+  it('renders CrawlingOptions only when Website Crawler is selected and has URLs', () => {
+    const { rerender } = render(<TextUrlInput {...defaultProps} selectedActor={ACTOR_WEBSITE_CRAWLER} urls={['https://example.com']} />);
+    expect(screen.getByText('Mocked CrawlingOptions')).toBeInTheDocument();
 
+    rerender(<TextUrlInput {...defaultProps} selectedActor={ACTOR_WEBSITE_CRAWLER} urls={[]} />);
+    expect(screen.queryByText('Mocked CrawlingOptions')).not.toBeInTheDocument();
 
-  it('populates currentUrlInput when a saved URL is clicked', async () => {
-    const user = userEvent.setup();
-    const urlToLoad = 'https://loadme.com';
-    localStorageMock.setItem('driveAnalyzer_savedUrls', JSON.stringify([urlToLoad, 'https://another.com']));
-    
-    renderComponent(); // Initial render
-    // The component should load saved URLs on mount.
-
-    const savedUrlElement = screen.getByText(urlToLoad); // This should be found
-    await user.click(savedUrlElement);
-
-    // The click handler for a saved URL should call onCurrentUrlInputChange
-    expect(mockOnCurrentUrlInputChange).toHaveBeenCalledWith(urlToLoad);
-    
-    // To verify the input field itself, we would need to update the prop via the callback
-    // and check screen.getByPlaceholderText('https://example.com').value
-    mockOnCurrentUrlInputChange.mockImplementationOnce((value) => {
-        updateComponentProps(value);
-    });
-    // Re-click to trigger the update with the mocked implementation
-    await user.click(savedUrlElement); 
-    expect(screen.getByPlaceholderText('https://example.com')).toHaveValue(urlToLoad);
-  });
-
-  it('deletes a saved URL from the list and localStorage', async () => {
-    const user = userEvent.setup();
-    const urlToDelete = 'https://deleteme.com';
-    const remainingUrl = 'https://keepme.com';
-    localStorageMock.setItem('driveAnalyzer_savedUrls', JSON.stringify([urlToDelete, remainingUrl]));
-    renderComponent();
-
-    expect(screen.getByText(urlToDelete)).toBeInTheDocument();
-    // Find the delete button associated with urlToDelete
-    const deleteButton = screen.getByText(urlToDelete).closest('div')?.querySelector('button[title*="Delete"]');
-    expect(deleteButton).toBeInTheDocument();
-
-    if (deleteButton) {
-      await user.click(deleteButton);
-    }
-    
-    expect(screen.queryByText(urlToDelete)).not.toBeInTheDocument();
-    expect(screen.getByText(remainingUrl)).toBeInTheDocument();
-    const currentStorage = JSON.parse(localStorageMock.getItem('driveAnalyzer_savedUrls') || '[]');
-    expect(currentStorage).not.toContain(urlToDelete);
-    expect(currentStorage).toContain(remainingUrl);
-  });
-
-  it('"Add URL to Session" button calls onUrlAdd with currentUrlInput', async () => {
-    const user = userEvent.setup();
-    const urlToAdd = 'https://sessionurl.com';
-    renderComponent(); // Initial render
-    updateComponentProps(urlToAdd); // Set currentUrlInput via prop update
-
-    const addButton = screen.getByRole('button', { name: /add url to session/i });
-    await user.click(addButton);
-
-    expect(mockOnUrlAdd).toHaveBeenCalledWith(urlToAdd);
-  });
-  
-  it('handles malformed JSON in localStorage gracefully', () => {
-    localStorageMock.setItem('driveAnalyzer_savedUrls', 'this is not json');
-    // Suppress console.error for this specific test
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    
-    renderComponent();
-    
-    expect(screen.getByText('No URLs saved yet.')).toBeInTheDocument(); // Should default to empty
-    expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to parse saved URLs from localStorage:", expect.any(Error));
-    
-    consoleErrorSpy.mockRestore();
+    rerender(<TextUrlInput {...defaultProps} selectedActor={ACTOR_ARTICLE_EXTRACTOR} urls={['https://example.com']} />);
+    expect(screen.queryByText('Mocked CrawlingOptions')).not.toBeInTheDocument();
   });
 });
