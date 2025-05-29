@@ -206,7 +206,7 @@ const ApifyActorsPage: React.FC = () => {
         return;
       }
 
-      const analysis = await analyzeWithOpenRouter(userPrompt, contextData, openRouterApiKey);
+      const analysis = await analyzeWithOpenRouter(contextData, userPrompt, openRouterApiKey);
       
       if (analysis.success && analysis.markdownReport) {
         setAiAnalysisResult(analysis.markdownReport);
