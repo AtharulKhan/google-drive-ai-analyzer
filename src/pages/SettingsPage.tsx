@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,16 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { user, isSignedIn, signInWithGoogle, signOut } = useSupabaseAuth();
-  
-  // State for Google Client ID (still needed for Drive API)
-  const [clientId, setClientId] = useState('');
-  const [clientIdInput, setClientIdInput] = useState('');
+  const { clientId, setClientId } = useGoogleAuth();
+  const [clientIdInput, setClientIdInput] = useState(clientId || '');
   
   // State for OpenRouter API key
   const [openRouterKey, setOpenRouterKey] = useState('');
@@ -24,48 +21,24 @@ export default function SettingsPage() {
   const [apifyToken, setApifyToken] = useState('');
   const [showApifyToken, setShowApifyToken] = useState(false);
   
-  // Load settings from localStorage and Supabase on component mount
+  // Load API keys from localStorage on component mount
   useEffect(() => {
-    // Load Google Client ID and OpenRouter key from localStorage
-    const savedClientId = localStorage.getItem('googleClientId') || '';
     const savedOpenRouterKey = localStorage.getItem('openRouterApiKey') || '';
+    const savedApifyToken = localStorage.getItem('apifyApiToken') || '';
     
-    setClientId(savedClientId);
-    setClientIdInput(savedClientId);
-    setOpenRouterKey(savedOpenRouterKey);
+    // If keys exist, show them
+    if (savedOpenRouterKey) {
+      setOpenRouterKey(savedOpenRouterKey);
+    }
     
-    // Load Apify token from Supabase if user is authenticated
-    if (isSignedIn && user) {
-      loadApifyToken();
+    if (savedApifyToken) {
+      setApifyToken(savedApifyToken);
     }
-  }, [isSignedIn, user]);
-  
-  const loadApifyToken = async () => {
-    if (!user?.id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_api_tokens')
-        .select('api_token')
-        .eq('user_id', user.id)
-        .eq('service', 'apify')
-        .single();
-
-      if (data?.api_token) {
-        setApifyToken(data.api_token);
-      } else if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        console.error('Error loading Apify token:', error);
-      }
-    } catch (error) {
-      console.error('Error loading Apify token:', error);
-    }
-  };
+  }, []);
   
   const handleSaveClientId = () => {
     if (clientIdInput.trim()) {
-      localStorage.setItem('googleClientId', clientIdInput.trim());
       setClientId(clientIdInput.trim());
-      toast.success("Google Client ID saved successfully");
     }
   };
   
@@ -76,37 +49,10 @@ export default function SettingsPage() {
     }
   };
   
-  const handleSaveApifyToken = async () => {
-    if (!apifyToken.trim()) {
-      toast.error("Please enter an Apify API token");
-      return;
-    }
-
-    if (!user?.id) {
-      toast.error("Please sign in to save your Apify token");
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('user_api_tokens')
-        .upsert({
-          user_id: user.id,
-          service: 'apify',
-          api_token: apifyToken.trim(),
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) {
-        console.error('Error saving Apify token:', error);
-        toast.error("Failed to save Apify token");
-        return;
-      }
-
+  const handleSaveApifyToken = () => {
+    if (apifyToken.trim()) {
+      localStorage.setItem('apifyApiToken', apifyToken.trim());
       toast.success("Apify API Token saved successfully");
-    } catch (error) {
-      console.error('Error saving Apify token:', error);
-      toast.error("Failed to save Apify token");
     }
   };
   
@@ -115,53 +61,6 @@ export default function SettingsPage() {
       <div className="container mx-auto p-4 max-w-4xl">
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
         
-        {/* Authentication Section */}
-        <Card className="shadow-md mb-6">
-          <CardHeader>
-            <CardTitle>Authentication</CardTitle>
-            <CardDescription>
-              Sign in with Google to securely store your API tokens
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            {isSignedIn && user ? (
-              <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-md border border-green-200 dark:border-green-800">
-                <div className="flex gap-2 items-start justify-between">
-                  <div className="flex gap-2 items-start">
-                    <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-green-800 dark:text-green-400">
-                        Signed in as: {user.email}
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={signOut}>
-                    Sign Out
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-800">
-                <div className="flex gap-2 items-start justify-between">
-                  <div className="flex gap-2 items-start">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-amber-800 dark:text-amber-400">
-                        Sign in with Google to securely store your API tokens
-                      </p>
-                    </div>
-                  </div>
-                  <Button onClick={signInWithGoogle}>
-                    Sign In with Google
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* Google API Configuration */}
         <Card className="shadow-md mb-6">
           <CardHeader>
             <CardTitle>Google API Configuration</CardTitle>
@@ -212,7 +111,6 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
         
-        {/* OpenRouter API Configuration */}
         <Card className="shadow-md mb-6">
           <CardHeader>
             <CardTitle>OpenRouter API Configuration</CardTitle>
@@ -272,12 +170,12 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
         
-        {/* Apify API Configuration */}
+        {/* NEW: Apify API Configuration Card */}
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Apify API Configuration</CardTitle>
             <CardDescription>
-              Configure your Apify API Token for web scraping capabilities. Your token will be securely stored.
+              Configure your Apify API Token for web scraping capabilities.
             </CardDescription>
           </CardHeader>
           
@@ -287,13 +185,12 @@ export default function SettingsPage() {
                 <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5" />
                 <div>
                   <p className="text-sm text-amber-800 dark:text-amber-400">
-                    An Apify API Token is required to use advanced web scraping features. Your token will be stored securely.
+                    An Apify API Token is required to use advanced web scraping features.
                   </p>
                   <ol className="list-decimal list-inside text-xs text-amber-700 dark:text-amber-500 mt-2 space-y-1">
                     <li>Go to your <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener noreferrer" className="underline">Apify Account Integrations</a> page.</li>
                     <li>Copy your personal API token.</li>
                     <li>Paste it below and save.</li>
-                    <li>Note: You must be signed in to save your token securely.</li>
                   </ol>
                 </div>
               </div>
@@ -319,7 +216,6 @@ export default function SettingsPage() {
                 value={apifyToken}
                 onChange={(e) => setApifyToken(e.target.value)}
                 className="font-mono"
-                disabled={!isSignedIn}
               />
               <p className="text-xs text-muted-foreground">
                 Example: apify_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -328,8 +224,8 @@ export default function SettingsPage() {
           </CardContent>
           
           <CardFooter>
-            <Button onClick={handleSaveApifyToken} disabled={!apifyToken.trim() || !isSignedIn}>
-              Save Apify Token Securely
+            <Button onClick={handleSaveApifyToken} disabled={!apifyToken.trim()}>
+              Save Apify Token
             </Button>
           </CardFooter>
         </Card>

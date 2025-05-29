@@ -7,9 +7,7 @@ const SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/documents.readonly',
   'https://www.googleapis.com/auth/spreadsheets.readonly',
-  'https://www.googleapis.com/auth/presentations.readonly',
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile'
+  'https://www.googleapis.com/auth/presentations.readonly'
 ].join(' ');
 
 export interface GoogleAuthState {
@@ -18,7 +16,6 @@ export interface GoogleAuthState {
   loading: boolean;
   error: string | null;
   clientId: string;
-  userInfo: { id: string; email: string; name: string } | null;
 }
 
 export function useGoogleAuth() {
@@ -31,32 +28,8 @@ export function useGoogleAuth() {
     accessToken: localStorage.getItem('googleAccessToken'),
     loading: false,
     error: null,
-    clientId: savedClientId,
-    userInfo: null
+    clientId: savedClientId
   });
-
-  // Function to get user info from Google API
-  const fetchUserInfo = useCallback(async (accessToken: string) => {
-    try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-      
-      if (response.ok) {
-        const userInfo = await response.json();
-        return {
-          id: userInfo.id,
-          email: userInfo.email,
-          name: userInfo.name
-        };
-      }
-    } catch (error) {
-      console.error('Error fetching user info:', error);
-    }
-    return null;
-  }, []);
 
   // Function to set the client ID
   const setClientId = useCallback((newClientId: string) => {
@@ -114,38 +87,18 @@ export function useGoogleAuth() {
         }
       });
 
-      // If we have an access token stored, fetch user info and verify it's still valid
+      // If we have an access token stored, check if it's still valid
       const storedToken = localStorage.getItem('googleAccessToken');
       if (storedToken) {
-        const userInfo = await fetchUserInfo(storedToken);
-        if (userInfo) {
-          // Store user info in localStorage for persistence
-          localStorage.setItem('googleUserInfo', JSON.stringify(userInfo));
-          setAuthState(prev => ({ 
-            ...prev, 
-            loading: false, 
-            isSignedIn: true,
-            accessToken: storedToken,
-            userInfo
-          }));
-        } else {
-          // Token is invalid, clear it
-          localStorage.removeItem('googleIsSignedIn');
-          localStorage.removeItem('googleAccessToken');
-          localStorage.removeItem('googleUserInfo');
-          setAuthState(prev => ({ ...prev, loading: false, isSignedIn: false, accessToken: null, userInfo: null }));
-        }
+        // We can't directly check token validity without making an API call
+        // The token will be used and if it fails, our error handling will clear it
+        setAuthState(prev => ({ 
+          ...prev, 
+          loading: false, 
+          isSignedIn: true,
+          accessToken: storedToken
+        }));
       } else {
-        // Check if we have stored user info
-        const storedUserInfo = localStorage.getItem('googleUserInfo');
-        if (storedUserInfo) {
-          try {
-            const userInfo = JSON.parse(storedUserInfo);
-            setAuthState(prev => ({ ...prev, userInfo }));
-          } catch (error) {
-            localStorage.removeItem('googleUserInfo');
-          }
-        }
         setAuthState(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
@@ -156,7 +109,7 @@ export function useGoogleAuth() {
         error: 'Failed to initialize Google API client' 
       }));
     }
-  }, [authState.clientId, fetchUserInfo]);
+  }, [authState.clientId]);
 
   useEffect(() => {
     if (authState.clientId) {
@@ -182,41 +135,30 @@ export function useGoogleAuth() {
       const client = google.accounts.oauth2.initTokenClient({
         client_id: authState.clientId,
         scope: SCOPES,
-        callback: async (response: any) => {
+        callback: (response: any) => {
           if (response.error) {
             setAuthState(prev => ({
               ...prev,
               isSignedIn: false,
               accessToken: null,
-              userInfo: null,
               loading: false,
               error: response.error
             }));
             // Clear storage in case of error
             localStorage.removeItem('googleIsSignedIn');
             localStorage.removeItem('googleAccessToken');
-            localStorage.removeItem('googleUserInfo');
             toast.error(`Authentication failed: ${response.error}`);
-            return;
-          }
-
-          // Get user info with the new access token
-          const userInfo = await fetchUserInfo(response.access_token);
-          if (!userInfo) {
-            toast.error("Failed to get user information");
             return;
           }
 
           // Store auth state in localStorage for persistence
           localStorage.setItem('googleIsSignedIn', 'true');
           localStorage.setItem('googleAccessToken', response.access_token);
-          localStorage.setItem('googleUserInfo', JSON.stringify(userInfo));
           
           setAuthState(prev => ({
             ...prev,
             isSignedIn: true,
             accessToken: response.access_token,
-            userInfo,
             loading: false,
             error: null
           }));
@@ -231,17 +173,15 @@ export function useGoogleAuth() {
         ...prev,
         isSignedIn: false,
         accessToken: null,
-        userInfo: null,
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to sign in with Google'
       }));
       // Clear storage in case of error
       localStorage.removeItem('googleIsSignedIn');
       localStorage.removeItem('googleAccessToken');
-      localStorage.removeItem('googleUserInfo');
       toast.error("Failed to sign in with Google");
     }
-  }, [authState.clientId, fetchUserInfo]);
+  }, [authState.clientId]);
 
   // Sign out
   const signOut = useCallback(() => {
@@ -255,33 +195,16 @@ export function useGoogleAuth() {
         // Clear storage
         localStorage.removeItem('googleIsSignedIn');
         localStorage.removeItem('googleAccessToken');
-        localStorage.removeItem('googleUserInfo');
         
         setAuthState(prev => ({
           ...prev,
           isSignedIn: false,
           accessToken: null,
-          userInfo: null,
           loading: false,
           error: null
         }));
         toast.info("Signed out from Google");
       });
-    } else {
-      // Clear storage even if no token
-      localStorage.removeItem('googleIsSignedIn');
-      localStorage.removeItem('googleAccessToken');
-      localStorage.removeItem('googleUserInfo');
-      
-      setAuthState(prev => ({
-        ...prev,
-        isSignedIn: false,
-        accessToken: null,
-        userInfo: null,
-        loading: false,
-        error: null
-      }));
-      toast.info("Signed out from Google");
     }
   }, [authState.accessToken]);
 
