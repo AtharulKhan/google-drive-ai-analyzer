@@ -6,10 +6,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Shapes } from 'lucide-react';
 import { toast } from 'sonner';
+import { Textarea } from "@/components/ui/textarea"; // Added for AI Prompt
+import { Markdown } from "@/components/ui/markdown"; // Added for AI Result Display
+import { analyzeWithOpenRouter } from "@/utils/openrouter-api"; // Added for AI Analysis
+import { getDefaultAIModel } from "@/utils/ai-models"; // Added for AI model selection
 import SmartArticleExtractorForm from '@/components/apify-actors/SmartArticleExtractorForm';
 import BingSearchScraperForm from '@/components/apify-actors/BingSearchScraperForm';
 import RssXmlScraperForm from '@/components/apify-actors/RssXmlScraperForm';
-import { runApifyActor, ActorRunResult } from '@/utils/apify-api'; // Updated import
+import { runApifyActor, ActorRunResult as ApiActorRunResult } from '@/utils/apify-api'; // Updated import
+
+// Define the extended ActorRunResult type
+interface ActorRunResult extends ApiActorRunResult {
+  actorName?: string;
+  timestamp?: string;
+}
 
 // Corrected Actor IDs
 const availableActors = [
@@ -22,8 +32,14 @@ const ApifyActorsPage: React.FC = () => {
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
   const [apifyToken, setApifyToken] = useState<string | null>(null);
   const [isRunningActor, setIsRunningActor] = useState<boolean>(false);
-  const [actorRunResult, setActorRunResult] = useState<ActorRunResult | null>(null);
+  const [actorRunResultsData, setActorRunResultsData] = useState<ActorRunResult[]>([]);
   const [actorRunError, setActorRunError] = useState<any | null>(null); // Store general errors too
+
+  // State for AI Analysis
+  const [userPrompt, setUserPrompt] = useState<string>("");
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<string | null>(null);
+  const [isAnalyzingWithAI, setIsAnalyzingWithAI] = useState<boolean>(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('apifyApiToken');
@@ -38,7 +54,7 @@ const ApifyActorsPage: React.FC = () => {
 
   const handleActorSelect = (actorId: string) => {
     setSelectedActorId(actorId);
-    setActorRunResult(null); // Clear previous results when changing actor
+    // Not clearing actorRunResultsData here to maintain a list of all runs
     setActorRunError(null);
   };
 
@@ -58,7 +74,7 @@ const ApifyActorsPage: React.FC = () => {
     const actualActorId = actorToRun.actualActorId;
 
     setIsRunningActor(true);
-    setActorRunResult(null);
+    // setActorRunResult(null); // This state is removed
     setActorRunError(null);
 
     try {
@@ -66,26 +82,153 @@ const ApifyActorsPage: React.FC = () => {
       const result = await runApifyActor(actualActorId, data, apifyToken);
       
       if (result.success) {
-        setActorRunResult(result);
-        console.log(`Actor ${actorToRun.name} finished successfully. Results:`, result.data);
+        const newResult: ActorRunResult = {
+          ...result,
+          actorName: actorToRun.name,
+          timestamp: new Date().toISOString(),
+        };
+        setActorRunResultsData(prevResults => [...prevResults, newResult]);
+        // console.log(`Actor ${actorToRun.name} finished successfully. Results:`, newResult.data); // Debug log removed
         toast.success(`${actorToRun.name} finished successfully!`, {
-          description: `${result.data?.length || 0} items fetched. Results logged and displayed. Run ID: ${result.runId}`,
+          description: `${newResult.data?.length || 0} items fetched. Run ID: ${newResult.runId}`,
         });
       } else {
-        setActorRunError(result.error || 'Actor run failed. Check console for details.');
-        console.error(`Actor ${actorToRun.name} failed. Error:`, result.error, "Run ID:", result.runId);
+        const errorMessage = typeof result.error === 'string' ? result.error : result.error?.message || 'Actor run failed. Check console for details.';
+        setActorRunError(result.error || { message: 'Actor run failed. Check console for details.' });
+        // console.error(`Actor ${actorToRun.name} failed. Error:`, result.error, "Run ID:", result.runId); // Debug log removed
         toast.error(`${actorToRun.name} failed.`, {
-          description: `Error: ${result.error || 'Unknown error'}. Run ID: ${result.runId || 'N/A'}. Check console.`,
+          description: `Error: ${errorMessage}. Run ID: ${result.runId || 'N/A'}. Check console for details.`,
         });
       }
     } catch (error: any) {
-      setActorRunError(error.message || 'An unexpected error occurred during actor execution.');
-      console.error(`Unexpected error running actor ${actorToRun.name}:`, error);
+      const errorMessage = error.message || 'An unexpected error occurred during actor execution.';
+      setActorRunError({ message: errorMessage, details: error });
+      // console.error(`Unexpected error running actor ${actorToRun.name}:`, error); // Debug log removed
       toast.error(`An unexpected error occurred with ${actorToRun.name}.`, {
-        description: error.message || 'Check console for details.',
+        description: errorMessage || 'Check console for details.',
       });
     } finally {
       setIsRunningActor(false);
+    }
+  };
+
+  const formatActorResultsForAI = (results: ActorRunResult[]): string => {
+    let formattedString = "";
+    const commonFields = ['title', 'url', 'link', 'href', 'text', 'summary', 'description', 'name', 'content', 'snippet'];
+
+    results.forEach((result, index) => {
+      formattedString += `## Results from ${result.actorName || 'Unknown Actor'} (Timestamp: ${result.timestamp ? new Date(result.timestamp).toLocaleString() : 'N/A'}) ##\n\n`;
+
+      if (result.data) {
+        if (Array.isArray(result.data)) {
+          if (result.data.length === 0) {
+            formattedString += "No data items found in this run.\n";
+          } else {
+            result.data.forEach((item, itemIndex) => {
+              let itemSummary = "";
+              if (item && typeof item === 'object') {
+                const itemKeys = Object.keys(item);
+                let foundFields = 0;
+                commonFields.forEach(field => {
+                  const key = itemKeys.find(k => k.toLowerCase() === field.toLowerCase());
+                  if (key && item[key]) {
+                    // Capitalize first letter of field for display
+                    const displayField = field.charAt(0).toUpperCase() + field.slice(1);
+                    itemSummary += `${displayField}: ${item[key]}\n`;
+                    foundFields++;
+                  }
+                });
+
+                // Add other relevant fields if not too many already
+                if (foundFields < 5) {
+                    itemKeys.forEach(key => {
+                        // Avoid re-adding already processed common fields and keep it concise
+                        if (!commonFields.includes(key.toLowerCase()) && item[key] && typeof item[key] !== 'object' && String(item[key]).length < 200) {
+                            if (foundFields < 6) { // Limit total fields to avoid excessive length
+                                itemSummary += `${key}: ${item[key]}\n`;
+                                foundFields++;
+                            }
+                        }
+                    });
+                }
+              }
+
+              if (itemSummary) {
+                formattedString += `Item ${itemIndex + 1}:\n${itemSummary}---\n`;
+              } else if (typeof item === 'string') {
+                formattedString += `Item ${itemIndex + 1}:\n${item}\n---\n`;
+              } else {
+                // Fallback for items that are not objects/strings or have no common fields
+                formattedString += `Item ${itemIndex + 1}:\n${JSON.stringify(item, null, 2)}\n---\n`;
+              }
+            });
+          }
+        } else {
+          // If result.data is not an array but exists
+          formattedString += `${JSON.stringify(result.data, null, 2)}\n`;
+        }
+      } else {
+        formattedString += "No data found for this run.\n";
+      }
+
+      if (index < results.length - 1) {
+        formattedString += "\n====================================\n\n";
+      }
+    });
+
+    return formattedString;
+  };
+
+  const handleAiAnalysisSubmit = async () => {
+    if (!userPrompt || actorRunResultsData.length === 0) {
+      toast.warning("Please enter a prompt and ensure there are actor results to analyze.");
+      return;
+    }
+
+    setIsAnalyzingWithAI(true);
+    setAiAnalysisResult(null);
+    setAiAnalysisError(null);
+    toast.info("Starting AI analysis...");
+
+    try {
+      const contextData = formatActorResultsForAI(actorRunResultsData);
+      
+      if (!contextData.trim()) {
+        toast.error("No data available from actor runs to analyze.", {
+          description: "Please ensure your actor runs have produced some output or the formatting resulted in empty content."
+        });
+        setIsAnalyzingWithAI(false);
+        return;
+      }
+
+      const openRouterApiKey = localStorage.getItem('openRouterApiKey');
+      if (!openRouterApiKey) {
+        toast.error("OpenRouter API Key is missing.", {
+          description: "Please set your OpenRouter API key in the settings page.",
+        });
+        setIsAnalyzingWithAI(false);
+        return;
+      }
+
+      const preferredModel = getDefaultAIModel(); 
+
+      const analysis = await analyzeWithOpenRouter(userPrompt, contextData, openRouterApiKey, preferredModel);
+      
+      if (analysis.success && analysis.markdownReport) {
+        setAiAnalysisResult(analysis.markdownReport);
+        toast.success("AI analysis completed successfully.");
+      } else {
+        const errorMsg = typeof analysis.error === 'string' ? analysis.error : analysis.error?.message || "AI analysis failed. No specific error message provided.";
+        setAiAnalysisError(errorMsg);
+        toast.error("AI Analysis Failed", { description: errorMsg });
+      }
+    } catch (error: any) {
+      // console.error("Error during AI analysis:", error); // Debug log removed
+      const errorMsg = error.message || "An unexpected error occurred during AI analysis.";
+      setAiAnalysisError(errorMsg);
+      toast.error("AI Analysis Error", { description: errorMsg });
+    } finally {
+      setIsAnalyzingWithAI(false);
     }
   };
 
@@ -178,47 +321,150 @@ const ApifyActorsPage: React.FC = () => {
             </Card>
 
             {/* Results/Error Display Area */}
-            {(isRunningActor || actorRunResult || actorRunError) && (
+            {(isRunningActor || actorRunResultsData.length > 0 || actorRunError) && (
               <Card className="shadow-lg mt-6 lg:mt-8">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Actor Run Status</CardTitle>
+                  {actorRunResultsData.length > 0 && !isRunningActor && (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setActorRunResultsData([]);
+                      // setActorRunError(null); // Keep last error until a new run starts or actor changes? Or clear it?
+                                               // For now, let's clear it to avoid confusion.
+                      setActorRunError(null);
+                      toast.info("All actor run results cleared.");
+                    }}>
+                      Clear All Results
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {isRunningActor && (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 mb-4"> {/* Added mb-4 for spacing */}
                       <Loader2 className="h-5 w-5 animate-spin" />
                       <span>Actor is running... Please wait.</span>
                     </div>
                   )}
                   {actorRunError && !isRunningActor && (
-                    <div>
-                      <h3 className="text-red-600 font-semibold">Run Failed:</h3>
+                    <div className="mb-4"> {/* Added mb-4 for spacing if results follow */}
+                      <h3 className="text-red-600 font-semibold">Last Run Failed:</h3>
                       <pre className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-sm text-red-700 dark:text-red-400 overflow-auto">
                         {typeof actorRunError === 'string' ? actorRunError : JSON.stringify(actorRunError, null, 2)}
                       </pre>
                     </div>
                   )}
-                  {actorRunResult && !isRunningActor && (
-                    <div>
-                      <h3 className="text-green-600 font-semibold">Run Successful:</h3>
-                      {actorRunResult.runId && <p className="text-sm">Run ID: {actorRunResult.runId}</p>}
-                      {actorRunResult.datasetId && <p className="text-sm">Dataset ID: {actorRunResult.datasetId}</p>}
-                      <p className="text-sm mb-2">Fetched {actorRunResult.data?.length || 0} items.</p>
-                      {actorRunResult.data && actorRunResult.data.length > 0 && (
-                        <ScrollArea className="h-[300px] border rounded p-2 bg-gray-50 dark:bg-gray-800/50">
-                          <pre className="text-xs">
-                            {JSON.stringify(actorRunResult.data, null, 2)}
-                          </pre>
-                        </ScrollArea>
-                      )}
-                      {(!actorRunResult.data || actorRunResult.data.length === 0) && (
-                        <p className="text-sm text-muted-foreground">No items returned in the dataset.</p>
-                      )}
-                    </div>
+                  {!isRunningActor && actorRunResultsData.length > 0 && (
+                    <ScrollArea className="h-[400px] pr-3"> {/* ScrollArea for multiple results */}
+                      {actorRunResultsData.slice().reverse().map((runResult, index) => ( // Display newest first
+                        <Card key={runResult.runId || `run-${index}-${runResult.timestamp}`} className="mb-4 shadow-md">
+                          <CardHeader className="pb-3 pt-4 bg-slate-50 dark:bg-slate-800/50 rounded-t-lg">
+                            <CardTitle className="text-base flex justify-between items-center">
+                              <span>{runResult.actorName || 'Actor'} Run</span>
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {runResult.timestamp ? new Date(runResult.timestamp).toLocaleString() : 'N/A'}
+                              </span>
+                            </CardTitle>
+                            <CardDescription className="text-xs pt-1">
+                              Run ID: {runResult.runId || 'N/A'} 
+                              {runResult.datasetId && ` | Dataset ID: ${runResult.datasetId}`}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="pt-3">
+                            <p className="text-sm mb-2">
+                              Status: <span className="font-semibold text-green-600">Successful</span> | Fetched {runResult.data?.length || 0} items.
+                            </p>
+                            {runResult.data && runResult.data.length > 0 ? (
+                              <ScrollArea className="h-[200px] border rounded p-2 bg-gray-50 dark:bg-gray-900/60 text-xs">
+                                <pre>
+                                  {JSON.stringify(runResult.data.slice(0, 5), null, 2)}
+                                  {runResult.data.length > 5 && `\n... (showing first 5 items of ${runResult.data.length})`}
+                                </pre>
+                              </ScrollArea>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">No items returned in this run.</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </ScrollArea>
+                  )}
+                  {!isRunningActor && actorRunResultsData.length === 0 && !actorRunError && (
+                     <div className="flex flex-col items-center justify-center text-center h-full min-h-[100px] p-6">
+                        <Shapes size={32} className="text-muted-foreground mb-3" />
+                        <p className="text-sm text-muted-foreground">
+                          No actor runs performed yet, or all results have been cleared.
+                        </p>
+                     </div>
                   )}
                 </CardContent>
               </Card>
             )}
+
+            {/* AI Analysis Section */}
+            <Card className="shadow-lg mt-6 lg:mt-8">
+              <CardHeader>
+                <CardTitle>AI Analysis</CardTitle>
+                <CardDescription>
+                  Use the combined results from successful actor runs as context for an AI prompt.
+                  Ensure your OpenRouter API key is set in Settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="Enter your prompt here to analyze the actor run results..."
+                    value={userPrompt}
+                    onChange={(e) => setUserPrompt(e.target.value)}
+                    rows={4}
+                    disabled={isAnalyzingWithAI || actorRunResultsData.length === 0}
+                  />
+                  <Button
+                    onClick={handleAiAnalysisSubmit}
+                    disabled={
+                      !userPrompt.trim() ||
+                      actorRunResultsData.length === 0 ||
+                      isRunningActor || // Also disable if an actor is running, to avoid confusion/overlap
+                      isAnalyzingWithAI
+                    }
+                  >
+                    {isAnalyzingWithAI ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Analyze with AI
+                  </Button>
+
+                  {(isAnalyzingWithAI || aiAnalysisResult || aiAnalysisError) && (
+                    <div className="pt-4">
+                      <h4 className="text-md font-semibold mb-2">AI Analysis Result:</h4>
+                      {isAnalyzingWithAI && (
+                        <div className="flex items-center space-x-2 text-muted-foreground">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <span>AI is analyzing... Please wait.</span>
+                        </div>
+                      )}
+                      {aiAnalysisError && !isAnalyzingWithAI && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded text-sm text-red-700 dark:text-red-400">
+                          <p className="font-semibold">Error:</p>
+                          <pre className="whitespace-pre-wrap">{aiAnalysisError}</pre>
+                        </div>
+                      )}
+                      {aiAnalysisResult && !isAnalyzingWithAI && (
+                        <Card className="bg-slate-50 dark:bg-slate-800/50">
+                          <CardContent className="p-4 prose dark:prose-invert max-w-none">
+                            <Markdown content={aiAnalysisResult} />
+                          </CardContent>
+                        </Card>
+                      )}
+                       {!isAnalyzingWithAI && !aiAnalysisResult && !aiAnalysisError && actorRunResultsData.length > 0 && (
+                         <p className="text-sm text-muted-foreground">Enter a prompt and click "Analyze with AI" to see results here.</p>
+                       )}
+                       {!isAnalyzingWithAI && !aiAnalysisResult && !aiAnalysisError && actorRunResultsData.length === 0 && (
+                         <p className="text-sm text-muted-foreground">Run an actor first to generate data for analysis.</p>
+                       )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
