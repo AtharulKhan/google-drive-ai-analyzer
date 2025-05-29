@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from "@/components/ui/button";
@@ -16,14 +17,14 @@ interface BingSearchScraperFormProps {
 }
 
 const marketCodes = [
-  "", "es-AR", "en-AU", "de-AT", "nl-BE", "fr-BE", "pt-BR", "en-CA", "fr-CA", "es-CL", "da-DK", "fi-FI", "fr-FR", 
+  "es-AR", "en-AU", "de-AT", "nl-BE", "fr-BE", "pt-BR", "en-CA", "fr-CA", "es-CL", "da-DK", "fi-FI", "fr-FR", 
   "de-DE", "zh-HK", "en-IN", "en-ID", "it-IT", "ja-JP", "ko-KR", "en-MY", "es-MX", "nl-NL", "en-NZ", "no-NO", 
   "zh-CN", "pl-PL", "pt-PT", "en-PH", "ru-RU", "ar-SA", "en-ZA", "es-ES", "sv-SE", "fr-CH", "de-CH", "zh-TW", 
   "tr-TR", "en-GB", "en-US", "es-US"
 ];
 
 const languageCodes = [
-  "", "ar", "eu", "bg", "ca", "zh", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "gl", "de", "el", "he", 
+  "ar", "eu", "bg", "ca", "zh", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "gl", "de", "el", "he", 
   "hu", "is", "it", "ja", "ko", "lv", "lt", "no", "pl", "pt", "ro", "ru", "sr", "sk", "sl", "es", "sv", "th", "tr"
 ];
 
@@ -49,6 +50,9 @@ const BingSearchScraperForm: React.FC<BingSearchScraperFormProps> = ({ onSubmit,
       queries: data.queries.split('\n').filter(q => q.trim() !== ''),
       resultsPerPage: Number(data.resultsPerPage),
       maxPagesPerQuery: Number(data.maxPagesPerQuery),
+      // Convert empty strings to undefined for the API
+      marketCode: data.marketCode || undefined,
+      languageCode: data.languageCode || undefined,
     };
     onSubmit(processedData);
   };
@@ -57,7 +61,6 @@ const BingSearchScraperForm: React.FC<BingSearchScraperFormProps> = ({ onSubmit,
     <form onSubmit={handleSubmit(processFormData)}>
       <ScrollArea className="h-[calc(100vh-220px)] pr-4">
         <div className="space-y-6 p-1">
-          {/* Fields remain the same, only button state changes */}
           <Card>
             <CardHeader>
               <CardTitle>Search Queries</CardTitle>
@@ -68,7 +71,7 @@ const BingSearchScraperForm: React.FC<BingSearchScraperFormProps> = ({ onSubmit,
                 id="queries"
                 {...register('queries', { required: 'At least one query is required.' })}
                 rows={4}
-                placeholder="e.g., AI in agriculture\nhttps://www.bing.com/search?q=sustainable+farming+techniques"
+                placeholder="e.g., AI in agriculture&#10;https://www.bing.com/search?q=sustainable+farming+techniques"
               />
               {errors.queries && <p className="text-red-500 text-sm">{errors.queries.message}</p>}
             </CardContent>
@@ -111,14 +114,15 @@ const BingSearchScraperForm: React.FC<BingSearchScraperFormProps> = ({ onSubmit,
                   name="marketCode"
                   control={control}
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
                         <SelectValue placeholder="Default (based on IP)" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="default">Default (based on IP)</SelectItem>
                         {marketCodes.map(code => (
                           <SelectItem key={code} value={code}>
-                            {code || "Default"}
+                            {code}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -132,14 +136,15 @@ const BingSearchScraperForm: React.FC<BingSearchScraperFormProps> = ({ onSubmit,
                   name="languageCode"
                   control={control}
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
                         <SelectValue placeholder="Default (based on market/IP)" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="default">Default (based on market/IP)</SelectItem>
                         {languageCodes.map(code => (
                           <SelectItem key={code} value={code}>
-                            {code || "Default"}
+                            {code}
                           </SelectItem>
                         ))}
                       </SelectContent>
