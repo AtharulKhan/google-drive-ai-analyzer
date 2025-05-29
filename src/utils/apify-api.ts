@@ -105,12 +105,12 @@ function getGoogleUserInfo() {
   }
 }
 
-// Helper function to call Apify via Edge Function with Google auth
+// Helper function to call Apify via Edge Function with Supabase auth
 async function callApifyViaEdgeFunction(actorId: string, input: any, endpoint: string = 'run-sync-get-dataset-items'): Promise<any> {
-  const googleUser = getGoogleUserInfo();
+  const { data: { session } } = await supabase.auth.getSession();
   
-  if (!googleUser) {
-    throw new Error('Please sign in with Google to use Apify features');
+  if (!session?.user) {
+    throw new Error('Please sign in to use Apify features');
   }
 
   const { data, error } = await supabase.functions.invoke('apify-proxy', {
@@ -118,10 +118,7 @@ async function callApifyViaEdgeFunction(actorId: string, input: any, endpoint: s
       actorId,
       input,
       endpoint,
-      googleUserId: googleUser.id // Pass the actual Google user ID
-    },
-    headers: {
-      'Authorization': `Bearer ${googleUser.accessToken}`
+      userId: session.user.id
     }
   });
 
@@ -156,7 +153,7 @@ function formatDatasetItemsToText(items: any[]): string {
     }
 
     if (index < items.length - 1) {
-      formattedText += "---\n\n"; // Separator between pages
+      formattedText += "---\n\n";
     }
   });
 

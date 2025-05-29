@@ -7,18 +7,36 @@ const corsHeaders = {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    const { actorId, input, endpoint = 'run-sync-get-dataset-items', googleUserId } = await req.json()
+    // Get the user from the JWT token
+    const authHeader = req.headers.get('authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    )
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { actorId, input, endpoint = 'run-sync-get-dataset-items' } = await req.json()
 
     if (!actorId || !input) {
       return new Response(
@@ -27,18 +45,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (!googleUserId) {
-      return new Response(
-        JSON.stringify({ error: 'Google user authentication required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Get user's Apify API token using Google user ID
+    // Get user's Apify API token
     const { data: tokenData, error: tokenError } = await supabase
       .from('user_api_tokens')
       .select('api_token')
-      .eq('user_id', googleUserId)
+      .eq('user_id', user.id)
       .eq('service', 'apify')
       .single()
 
