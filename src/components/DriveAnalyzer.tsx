@@ -19,17 +19,8 @@ import { useDrivePicker } from "@/hooks/useDrivePicker";
 import { fetchFileContent } from "@/utils/google-api";
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
 import { getDefaultAIModel } from "@/utils/ai-models";
-import { 
-  analyzeMultipleUrlsWithApify, 
-  extractArticleWithApify,
-  searchWithBingScraper,
-  scrapeRssFeedWithApify,
-  ArticleExtractorSmartInput,
-  BingSearchScraperInput,
-  RssXmlScraperInput,
-  ApifyCrawlingOptions 
-} from "@/utils/apify-api";
-import useAnalysisState, {
+import { analyzeMultipleUrlsWithApify } from "@/utils/apify-api";
+import useAnalysisState, { 
   CUSTOM_INSTRUCTIONS_KEY,
   SAVED_PROMPTS_KEY,
   SavedPrompt,
@@ -118,23 +109,6 @@ export default function DriveAnalyzer() {
   const [maxFiles, setMaxFiles] = useState<number>(DEFAULT_MAX_FILES);
   const [includeSubfolders, setIncludeSubfolders] = useState(true);
   const [customInstructions, setCustomInstructions] = useState<string>("");
-
-  // --- Apify Actor State ---
-  const ACTOR_WEBSITE_CRAWLER = "website-crawler";
-  const ACTOR_ARTICLE_EXTRACTOR = "article-extractor";
-  const ACTOR_BING_SEARCH = "bing-search";
-  const ACTOR_RSS_SCRAPER = "rss-scraper";
-
-  const [selectedActor, setSelectedActor] = useState<string>(ACTOR_WEBSITE_CRAWLER);
-
-  // Inputs for different actors - kept simple for now
-  const [articleExtractorUrl, setArticleExtractorUrl] = useState<string>("");
-  const [bingSearchQuery, setBingSearchQuery] = useState<string>("");
-  // TODO: Add more specific Bing options if needed, e.g., country, numresults
-  // const [bingSearchOptions, setBingSearchOptions] = useState<Partial<BingSearchScraperInput>>({}); 
-  const [rssFeedUrl, setRssFeedUrl] = useState<string>("");
-  // --- End Apify Actor State ---
-
   const [newPromptTitle, setNewPromptTitle] = useState("");
   const [newPromptContent, setNewPromptContent] = useState("");
   const [isPromptCommandOpen, setIsPromptCommandOpen] = useState(false);
@@ -246,81 +220,18 @@ export default function DriveAnalyzer() {
           processedFiles: itemsProcessed - 1, // visually show progress on current item
         }));
         
-        // --- APPY ACTOR LOGIC ---
-        if (selectedActor === ACTOR_WEBSITE_CRAWLER && urls.length > 0) {
-          itemsProcessed++;
-          setProcessingStatus(prev => ({
-            ...prev,
-            currentStep: `Analyzing ${urls.length} URL(s) with Website Content Crawler...`,
-            progress: Math.round((itemsProcessed / totalItems) * 15),
-            processedFiles: itemsProcessed - 1,
-          }));
-          const apifyResult = await analyzeMultipleUrlsWithApify(urls, crawlingOptions);
-          if (apifyResult.failedUrls.length > 0) {
-            toast.warning(`Failed to analyze: ${apifyResult.failedUrls.join(', ')}`);
-          }
-          if (apifyResult.combinedAnalyzedText.trim() !== "") {
-            allContentSources.push(`### Website Crawler Output for: ${urls.join(', ')}\n\n${apifyResult.combinedAnalyzedText.trim()}`);
-          }
-          currentProgress = 15;
-        } else if (selectedActor === ACTOR_ARTICLE_EXTRACTOR && articleExtractorUrl.trim() !== "") {
-          itemsProcessed++;
-           setProcessingStatus(prev => ({
-            ...prev,
-            currentStep: `Extracting article from ${articleExtractorUrl}...`,
-            progress: Math.round((itemsProcessed / totalItems) * 15),
-            processedFiles: itemsProcessed - 1,
-          }));
-          const articleInput: ArticleExtractorSmartInput = { url: articleExtractorUrl };
-          const articleResult = await extractArticleWithApify(articleInput);
-          if (articleResult.error) {
-            toast.warning(`Failed to extract article from ${articleExtractorUrl}: ${articleResult.error}`);
-          }
-          if (articleResult.analyzedText.trim() !== "") {
-            allContentSources.push(`### Article Extractor Output for: ${articleExtractorUrl}\n\n${articleResult.analyzedText.trim()}`);
-          }
-          currentProgress = 15;
-        } else if (selectedActor === ACTOR_BING_SEARCH && bingSearchQuery.trim() !== "") {
-          itemsProcessed++;
-          setProcessingStatus(prev => ({
-            ...prev,
-            currentStep: `Searching Bing for "${bingSearchQuery}"...`,
-            progress: Math.round((itemsProcessed / totalItems) * 15),
-            processedFiles: itemsProcessed - 1,
-          }));
-          const bingInput: BingSearchScraperInput = { searchqueries: bingSearchQuery };
-          // Add other options like country, numresults to bingInput if implemented
-          const bingResult = await searchWithBingScraper(bingInput);
-          if (bingResult.error) {
-            toast.warning(`Bing search failed for "${bingSearchQuery}": ${bingResult.error}`);
-          }
-          if (bingResult.analyzedText.trim() !== "") {
-            allContentSources.push(`### Bing Search Output for: "${bingSearchQuery}"\n\n${bingResult.analyzedText.trim()}`);
-          }
-          currentProgress = 15;
-        } else if (selectedActor === ACTOR_RSS_SCRAPER && rssFeedUrl.trim() !== "") {
-          itemsProcessed++;
-          setProcessingStatus(prev => ({
-            ...prev,
-            currentStep: `Scraping RSS feed from ${rssFeedUrl}...`,
-            progress: Math.round((itemsProcessed / totalItems) * 15),
-            processedFiles: itemsProcessed - 1,
-          }));
-          const rssInput: RssXmlScraperInput = { rssUrls: [rssFeedUrl] };
-          const rssResult = await scrapeRssFeedWithApify(rssInput);
-          if (rssResult.error) {
-            toast.warning(`Failed to scrape RSS feed from ${rssFeedUrl}: ${rssResult.error}`);
-          }
-          if (rssResult.analyzedText.trim() !== "") {
-            allContentSources.push(`### RSS Feed Output for: ${rssFeedUrl}\n\n${rssResult.analyzedText.trim()}`);
-          }
-          currentProgress = 15;
+        const apifyResult = await analyzeMultipleUrlsWithApify(urls, crawlingOptions);
+        
+        if (apifyResult.failedUrls.length > 0) {
+          toast.warning(`Failed to analyze: ${apifyResult.failedUrls.join(', ')}`);
         }
-        // --- END APPY ACTOR LOGIC ---
+        if (apifyResult.combinedAnalyzedText.trim() !== "") {
+          allContentSources.push(apifyResult.combinedAnalyzedText.trim());
+        }
+        currentProgress = 15; // Mark URL analysis as 15% done
       }
 
-
-      // Process Pasted Text (moved after Apify actor logic)
+      // 2. Process Pasted Text
       if (pastedText.trim() !== "") {
         itemsProcessed++;
         setProcessingStatus(prev => ({
@@ -441,22 +352,13 @@ export default function DriveAnalyzer() {
       toast.success("Analysis completed successfully");
 
       const analysisSources: SavedAnalysisSource[] = [];
-      selectedFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name, actor: ACTOR_WEBSITE_CRAWLER })); // Default or adjust if files are used by other actors
-      if (selectedActor === ACTOR_WEBSITE_CRAWLER) {
-        urls.forEach(url => analysisSources.push({ type: 'url', name: url, actor: ACTOR_WEBSITE_CRAWLER }));
-      } else if (selectedActor === ACTOR_ARTICLE_EXTRACTOR && articleExtractorUrl.trim() !== "") {
-        analysisSources.push({ type: 'url', name: articleExtractorUrl, actor: ACTOR_ARTICLE_EXTRACTOR });
-      } else if (selectedActor === ACTOR_BING_SEARCH && bingSearchQuery.trim() !== "") {
-        analysisSources.push({ type: 'search', name: bingSearchQuery, actor: ACTOR_BING_SEARCH });
-      } else if (selectedActor === ACTOR_RSS_SCRAPER && rssFeedUrl.trim() !== "") {
-        analysisSources.push({ type: 'feed', name: rssFeedUrl, actor: ACTOR_RSS_SCRAPER });
-      }
-      
+      selectedFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name }));
+      urls.forEach(url => analysisSources.push({ type: 'url', name: url }));
       if (pastedText.trim() !== "") {
-        analysisSources.push({ type: 'text', name: 'Pasted Text Content', actor: selectedActor });
+        analysisSources.push({ type: 'text', name: 'Pasted Text Content' });
       }
       if (localFiles.length > 0) {
-        localFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name, actor: selectedActor })); // Assuming local files are processed in context of current actor
+        localFiles.forEach(file => analysisSources.push({ type: 'file', name: file.name }));
       }
 
       const currentTimestamp = Date.now();
@@ -776,20 +678,6 @@ export default function DriveAnalyzer() {
                       onClearUrls={handleClearUrls}
                       currentUrlInput={currentUrlInput}
                       onCurrentUrlInputChange={setCurrentUrlInput}
-                      // Apify Actor Props
-                      selectedActor={selectedActor}
-                      onSelectedActorChange={setSelectedActor}
-                      actorWebsiteCrawler={ACTOR_WEBSITE_CRAWLER}
-                      actorArticleExtractor={ACTOR_ARTICLE_EXTRACTOR}
-                      actorBingSearch={ACTOR_BING_SEARCH}
-                      actorRssScraper={ACTOR_RSS_SCRAPER}
-                      articleExtractorUrl={articleExtractorUrl}
-                      onArticleExtractorUrlChange={setArticleExtractorUrl}
-                      bingSearchQuery={bingSearchQuery}
-                      onBingSearchQueryChange={setBingSearchQuery}
-                      rssFeedUrl={rssFeedUrl}
-                      onRssFeedUrlChange={setRssFeedUrl}
-                      // Crawling options for website crawler
                       crawlingOptions={crawlingOptions}
                       onCrawlingOptionsChange={handleCrawlingOptionsChange}
                     />
@@ -814,16 +702,8 @@ export default function DriveAnalyzer() {
             onClick={handleRunAnalysis}
             disabled={
               (!isSignedIn && selectedFiles.length > 0) ||
-              (!isReady && selectedFiles.length > 0) || // Google Drive files need picker
-              (
-                selectedFiles.length === 0 && 
-                pastedText.trim() === "" && 
-                localFiles.length === 0 &&
-                (selectedActor === ACTOR_WEBSITE_CRAWLER && urls.length === 0) &&
-                (selectedActor === ACTOR_ARTICLE_EXTRACTOR && articleExtractorUrl.trim() === "") &&
-                (selectedActor === ACTOR_BING_SEARCH && bingSearchQuery.trim() === "") &&
-                (selectedActor === ACTOR_RSS_SCRAPER && rssFeedUrl.trim() === "")
-              ) ||
+              (!isReady && selectedFiles.length > 0) ||
+              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) ||
               processingStatus.isProcessing
             }
             className="w-full sm:w-auto"
@@ -869,12 +749,7 @@ export default function DriveAnalyzer() {
               <DialogTitle>{viewingAnalysis.title}</DialogTitle>
             </DialogHeader>
             <div className="overflow-y-auto flex-grow pr-6">
-              <SavedAnalysisDetailView analysis={viewingAnalysis} actorConstants={{
-                  ACTOR_WEBSITE_CRAWLER,
-                  ACTOR_ARTICLE_EXTRACTOR,
-                  ACTOR_BING_SEARCH,
-                  ACTOR_RSS_SCRAPER
-              }} />
+              <SavedAnalysisDetailView analysis={viewingAnalysis} />
             </div>
             <DialogFooter className="mt-auto pt-4">
               <DialogClose asChild>
