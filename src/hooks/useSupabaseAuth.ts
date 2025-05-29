@@ -23,6 +23,8 @@ export function useSupabaseAuth() {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        
         setAuthState(prev => ({
           ...prev,
           session,
@@ -33,21 +35,42 @@ export function useSupabaseAuth() {
 
         if (event === 'SIGNED_IN') {
           toast.success("Successfully signed in!");
+          // Clean up URL hash after successful sign in
+          if (window.location.hash) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
         } else if (event === 'SIGNED_OUT') {
           toast.info("Signed out successfully");
         }
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthState(prev => ({
-        ...prev,
-        session,
-        user: session?.user ?? null,
-        loading: false
-      }));
-    });
+    // Check for existing session on mount
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+          setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
+        } else {
+          setAuthState(prev => ({
+            ...prev,
+            session,
+            user: session?.user ?? null,
+            loading: false
+          }));
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setAuthState(prev => ({ 
+          ...prev, 
+          loading: false, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        }));
+      }
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);
