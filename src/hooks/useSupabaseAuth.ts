@@ -35,9 +35,13 @@ export function useSupabaseAuth() {
 
         if (event === 'SIGNED_IN') {
           toast.success("Successfully signed in!");
-          // Clean up URL hash after successful sign in
+          // Clean up URL hash and redirect to main page after successful sign in
           if (window.location.hash) {
             window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          // Redirect to main page if we're on the settings page
+          if (window.location.pathname === '/settings') {
+            window.location.href = '/';
           }
         } else if (event === 'SIGNED_OUT') {
           toast.info("Signed out successfully");
