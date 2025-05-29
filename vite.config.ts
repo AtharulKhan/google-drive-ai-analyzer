@@ -17,13 +17,9 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
-  optimizeDeps: {
-    exclude: ['apify-client'],
-    include: [],
-  },
-  build: {
-    rollupOptions: {
-      external: ['apify-client'],
-    },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
   },
 })

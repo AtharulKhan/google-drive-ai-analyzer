@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface BingSearchScraperFormProps {
   onSubmit: (data: any) => void;
   apifyToken: string | null;
-  isLoading: boolean; // Added isLoading prop
+  isLoading: boolean;
 }
 
 const marketCodes = [
@@ -38,7 +38,7 @@ const defaultValues = {
   ignoreSoftBlocking: false,
 };
 
-const BingSearchScraperForm: React.FC<BingSearchScraperFormProps> = ({ onSubmit, apifyToken }) => {
+const BingSearchScraperForm: React.FC<BingSearchScraperFormProps> = ({ onSubmit, apifyToken, isLoading }) => {
   const { register, handleSubmit, control, formState: { errors } } = useForm({
     defaultValues,
   });

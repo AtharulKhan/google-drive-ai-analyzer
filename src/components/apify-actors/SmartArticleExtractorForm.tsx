@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface SmartArticleExtractorFormProps {
   onSubmit: (data: any) => void;
   apifyToken: string | null;
-  isLoading: boolean; // Added isLoading prop
+  isLoading: boolean;
 }
 
 const defaultValues = {
@@ -39,7 +39,7 @@ const defaultValues = {
   useBrowser: false,
 };
 
-const SmartArticleExtractorForm: React.FC<SmartArticleExtractorFormProps> = ({ onSubmit, apifyToken }) => {
+const SmartArticleExtractorForm: React.FC<SmartArticleExtractorFormProps> = ({ onSubmit, apifyToken, isLoading }) => {
   const { register, handleSubmit, control, formState: { errors }, watch } = useForm({
     defaultValues,
   });

@@ -206,8 +206,6 @@ const ApifyActorsPage: React.FC = () => {
         return;
       }
 
-      const preferredModel = getDefaultAIModel(); 
-
       const analysis = await analyzeWithOpenRouter(userPrompt, contextData, openRouterApiKey);
       
       if (analysis.success && analysis.markdownReport) {

@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 interface RssXmlScraperFormProps {
   onSubmit: (data: any) => void;
   apifyToken: string | null;
-  isLoading: boolean; // Added isLoading prop
+  isLoading: boolean;
 }
 
 const defaultValues = {
@@ -27,7 +27,7 @@ const defaultValues = {
   dev_no_strip: false,
 };
 
-const RssXmlScraperForm: React.FC<RssXmlScraperFormProps> = ({ onSubmit, apifyToken }) => {
+const RssXmlScraperForm: React.FC<RssXmlScraperFormProps> = ({ onSubmit, apifyToken, isLoading }) => {
   const { register, handleSubmit, control, formState: { errors }, setError, clearErrors } = useForm({
     defaultValues,
   });
