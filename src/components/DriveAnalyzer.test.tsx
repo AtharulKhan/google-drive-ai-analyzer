@@ -71,13 +71,16 @@ jest.mock('./drive-analyzer/SavedAnalysesSidebar', () => ({ SavedAnalysesSidebar
 jest.mock('./drive-analyzer/PromptSelector', () => ({ PromptSelector: jest.fn(({ userPrompt, onUserPromptChange }) => <textarea aria-label="User Prompt" value={userPrompt} onChange={onUserPromptChange} />) }));
 jest.mock('./drive-analyzer/ConfigurationOptions', () => ({ ConfigurationOptions: jest.fn(() => <div>Mocked ConfigOptions</div>) }));
 jest.mock('./drive-analyzer/AnalysisResults', () => ({ AnalysisResults: jest.fn(() => <div>Mocked AnalysisResults</div>) }));
-// TextUrlInput is the one we want to test interactions with, so we don't fully mock it,
-// but we need to ensure its sub-components like CrawlingOptions are also mocked if they render.
-jest.mock('./drive-analyzer/CrawlingOptions', () => ({ CrawlingOptions: jest.fn(() => <div>Mocked CrawlingOptions</div>) }));
+// TextUrlInput is the one we want to test interactions with.
+// Mock its sub-components for options.
+jest.mock('./drive-analyzer/WebsiteCrawlerOptions', () => ({ WebsiteCrawlerOptions: jest.fn(({ options, onChange }) => <div data-testid="mock-website-crawler-options" onClick={() => onChange({ maxCrawlDepth: (options.maxCrawlDepth || 0) + 1 })} />)}));
+jest.mock('./drive-analyzer/ArticleExtractorOptions', () => ({ ArticleExtractorOptions: jest.fn(({ options, onOptionChange }) => <div data-testid="mock-article-extractor-options" onClick={() => onOptionChange('minWords', (options.minWords || 0) + 10)} />)}));
+jest.mock('./drive-analyzer/BingSearchOptions', () => ({ BingSearchOptions: jest.fn(({ options, onOptionChange }) => <div data-testid="mock-bing-search-options" onClick={() => onOptionChange('resultsPerPage', (options.resultsPerPage || 0) + 5)} />)}));
+jest.mock('./drive-analyzer/RssScraperOptions', () => ({ RssScraperOptions: jest.fn(({ options, onOptionChange }) => <div data-testid="mock-rss-scraper-options" onClick={() => onOptionChange('maxItems', (options.maxItems || 0) + 3)} />)}));
 
 
 // --- Test Suite ---
-describe('DriveAnalyzer - Apify Actor Integration', () => {
+describe('DriveAnalyzer', () => { // Renamed for broader scope
   beforeEach(() => {
     jest.clearAllMocks();
     // Setup default successful responses for Apify calls to avoid pending promises
@@ -124,120 +127,232 @@ describe('DriveAnalyzer - Apify Actor Integration', () => {
       );
     });
     await waitFor(() => expect(openRouterApi.analyzeWithOpenRouter).toHaveBeenCalled());
+    // The old tests for "Run AI Analysis" directly calling actors are now removed / will be replaced by fetch + analyze tests.
   });
 
-  it('selects Article Extractor and calls extractArticleWithApify', async () => {
-    render(<DriveAnalyzer />);
-    enterPrompt();
-    
-    const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
-    fireEvent.mouseDown(selectTrigger);
-    fireEvent.click(screen.getByText('Article Extractor (Single URL)'));
+  describe('Actor Options Rendering and State', () => {
+    it('renders WebsiteCrawlerOptions by default and updates its options', async () => {
+      render(<DriveAnalyzer />);
+      // Add a URL to make options visible
+      const urlInput = screen.getByPlaceholderText('https://example.com');
+      fireEvent.change(urlInput, { target: { value: 'https://test.com' } });
+      fireEvent.click(screen.getByText('Add URL to Session'));
 
-    const articleUrlInput = screen.getByPlaceholderText('https://example.com/article-page');
-    fireEvent.change(articleUrlInput, { target: { value: 'https://article.com/extract' } });
-    
-    const runButton = screen.getByText(/Run AI Analysis/i);
-    fireEvent.click(runButton);
+      const optionsComponent = screen.getByTestId('mock-website-crawler-options');
+      expect(optionsComponent).toBeInTheDocument();
+      
+      // Simulate option change within the mocked component
+      fireEvent.click(optionsComponent); 
+      
+      // Enter prompt and fetch
+      enterPrompt();
+      const fetchDataButton = screen.getByText('Fetch Data from Actor');
+      fireEvent.click(fetchDataButton);
 
-    await waitFor(() => {
-      expect(apifyApi.extractArticleWithApify).toHaveBeenCalledTimes(1);
-      expect(apifyApi.extractArticleWithApify).toHaveBeenCalledWith({ url: 'https://article.com/extract' });
+      await waitFor(() => {
+        expect(apifyApi.analyzeMultipleUrlsWithApify).toHaveBeenCalledWith(
+          expect.any(Array),
+          expect.objectContaining({ maxCrawlDepth: 1 }) // Default is 0, mock click increments it
+        );
+      });
     });
-    await waitFor(() => expect(openRouterApi.analyzeWithOpenRouter).toHaveBeenCalled());
-  });
 
-  it('selects Bing Search Scraper and calls searchWithBingScraper', async () => {
-    render(<DriveAnalyzer />);
-    enterPrompt();
+    it('renders ArticleExtractorOptions and updates its options', async () => {
+      render(<DriveAnalyzer />);
+      const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
+      fireEvent.mouseDown(selectTrigger);
+      fireEvent.click(screen.getByText('Article Extractor (Single URL)'));
+      
+      const optionsComponent = screen.getByTestId('mock-article-extractor-options');
+      expect(optionsComponent).toBeInTheDocument();
+      fireEvent.click(optionsComponent); // Simulate change: minWords 50 -> 60
 
-    const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
-    fireEvent.mouseDown(selectTrigger);
-    fireEvent.click(screen.getByText('Bing Search Scraper'));
+      enterPrompt();
+      const articleUrlInput = screen.getByPlaceholderText('https://example.com/article-page');
+      fireEvent.change(articleUrlInput, { target: { value: 'https://article.com/to-extract' } });
+      fireEvent.click(screen.getByText('Fetch Data from Actor'));
 
-    const bingQueryInput = screen.getByPlaceholderText('Enter your search query/queries...');
-    fireEvent.change(bingQueryInput, { target: { value: 'bing search this' } });
-
-    const runButton = screen.getByText(/Run AI Analysis/i);
-    fireEvent.click(runButton);
-
-    await waitFor(() => {
-      expect(apifyApi.searchWithBingScraper).toHaveBeenCalledTimes(1);
-      expect(apifyApi.searchWithBingScraper).toHaveBeenCalledWith({ searchqueries: 'bing search this' });
+      await waitFor(() => {
+        expect(apifyApi.extractArticleWithApify).toHaveBeenCalledWith(
+          expect.objectContaining({ minWords: 60 })
+        );
+      });
     });
-    await waitFor(() => expect(openRouterApi.analyzeWithOpenRouter).toHaveBeenCalled());
-  });
+     it('renders BingSearchOptions and updates its options', async () => {
+      render(<DriveAnalyzer />);
+      const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
+      fireEvent.mouseDown(selectTrigger);
+      fireEvent.click(screen.getByText('Bing Search Scraper'));
+      
+      const optionsComponent = screen.getByTestId('mock-bing-search-options');
+      expect(optionsComponent).toBeInTheDocument();
+      fireEvent.click(optionsComponent); // Simulate change: resultsPerPage 10 -> 15
 
-  it('selects RSS/XML Feed Scraper and calls scrapeRssFeedWithApify', async () => {
-    render(<DriveAnalyzer />);
-    enterPrompt();
 
-    const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
-    fireEvent.mouseDown(selectTrigger);
-    fireEvent.click(screen.getByText('RSS/XML Feed Scraper'));
+      enterPrompt();
+      const bingQueryInput = screen.getByPlaceholderText('Enter your search query/queries...');
+      fireEvent.change(bingQueryInput, { target: { value: 'bing query for options test' } });
+      fireEvent.click(screen.getByText('Fetch Data from Actor'));
 
-    const rssUrlInput = screen.getByPlaceholderText('https://example.com/feed.xml');
-    fireEvent.change(rssUrlInput, { target: { value: 'https://feed.com/rss' } });
-
-    const runButton = screen.getByText(/Run AI Analysis/i);
-    fireEvent.click(runButton);
-
-    await waitFor(() => {
-      expect(apifyApi.scrapeRssFeedWithApify).toHaveBeenCalledTimes(1);
-      expect(apifyApi.scrapeRssFeedWithApify).toHaveBeenCalledWith({ rssUrls: ['https://feed.com/rss'] });
+      await waitFor(() => {
+        expect(apifyApi.searchWithBingScraper).toHaveBeenCalledWith(
+          expect.objectContaining({ resultsPerPage: 15 })
+        );
+      });
     });
-    await waitFor(() => expect(openRouterApi.analyzeWithOpenRouter).toHaveBeenCalled());
+
+    it('renders RssScraperOptions and updates its options', async () => {
+      render(<DriveAnalyzer />);
+      const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
+      fireEvent.mouseDown(selectTrigger);
+      fireEvent.click(screen.getByText('RSS/XML Feed Scraper'));
+      
+      const optionsComponent = screen.getByTestId('mock-rss-scraper-options');
+      expect(optionsComponent).toBeInTheDocument();
+      fireEvent.click(optionsComponent); // Simulate change: maxItems 25 -> 28
+
+      enterPrompt();
+      const rssUrlInput = screen.getByPlaceholderText('https://example.com/feed.xml');
+      fireEvent.change(rssUrlInput, { target: { value: 'https://rssfeed.com/for-options' } });
+      fireEvent.click(screen.getByText('Fetch Data from Actor'));
+      
+      await waitFor(() => {
+        expect(apifyApi.scrapeRssFeedWithApify).toHaveBeenCalledWith(
+          expect.objectContaining({ maxItems: 28 })
+        );
+      });
+    });
   });
+
+  describe('Two-Step Workflow: Fetch Data then Run AI Analysis', () => {
+    it('Fetch Data button calls the correct Apify actor and updates state', async () => {
+      render(<DriveAnalyzer />);
+      enterPrompt();
+
+      // Select Article Extractor
+      const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
+      fireEvent.mouseDown(selectTrigger);
+      fireEvent.click(screen.getByText('Article Extractor (Single URL)'));
+      const articleUrlInput = screen.getByPlaceholderText('https://example.com/article-page');
+      fireEvent.change(articleUrlInput, { target: { value: 'https://fetchtest.com' } });
+
+      // Mock Apify response
+      const mockFetchedText = "Fetched article content for test.";
+      (apifyApi.extractArticleWithApify as jest.Mock).mockResolvedValueOnce({ 
+        analyzedText: mockFetchedText, 
+        failedUrl: null 
+      });
+
+      const fetchDataButton = screen.getByText('Fetch Data from Actor');
+      fireEvent.click(fetchDataButton);
+
+      expect(screen.getByText('Fetching Data...')).toBeInTheDocument(); // Check loading state
+      await waitFor(() => {
+        expect(apifyApi.extractArticleWithApify).toHaveBeenCalledWith(
+          expect.objectContaining({ url: 'https://fetchtest.com' })
+        );
+      });
+      
+      // Check fetched data display (this relies on Markdown component rendering the text)
+      // The fetched data card itself will be on the "Data & AI Results" tab.
+      // Let's switch to it to ensure content is there for next step.
+      const resultsTabTrigger = screen.getByRole('tab', { name: /Data & AI Results/i });
+      fireEvent.click(resultsTabTrigger);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Fetched Data from Actor')).toBeInTheDocument(); // Card title
+         // The actual content is inside the Markdown mock or a specific element if not mocked
+        expect(screen.getByText(mockFetchedText)).toBeInTheDocument(); // Assuming Markdown renders it directly
+      });
+
+       // Check that "Run AI Analysis" button is now enabled (if prompt is filled)
+      const runAIButton = screen.getByText('Run AI Analysis');
+      expect(runAIButton).not.toBeDisabled();
+    });
+
+    it('Run AI Analysis button uses fetched data', async () => {
+        render(<DriveAnalyzer />);
+        enterPrompt();
   
-  it('disables Run button if required input for selected actor is missing', async () => {
-    render(<DriveAnalyzer />);
-    enterPrompt(); // Prompt is always required
+        // 1. Fetch data first
+        const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
+        fireEvent.mouseDown(selectTrigger);
+        fireEvent.click(screen.getByText('Article Extractor (Single URL)'));
+        const articleUrlInput = screen.getByPlaceholderText('https://example.com/article-page');
+        fireEvent.change(articleUrlInput, { target: { value: 'https://fetchedforai.com' } });
+        
+        const mockFetchedText = "This is pre-fetched content.";
+        (apifyApi.extractArticleWithApify as jest.Mock).mockResolvedValueOnce({ 
+          analyzedText: mockFetchedText, 
+          failedUrl: null 
+        });
+        fireEvent.click(screen.getByText('Fetch Data from Actor'));
+        await waitFor(() => expect(screen.getByText(mockFetchedText)).toBeInTheDocument());
+  
+        // 2. Run AI Analysis
+        const runAIButton = screen.getByText('Run AI Analysis');
+        fireEvent.click(runAIButton);
+  
+        await waitFor(() => {
+          expect(openRouterApi.analyzeWithOpenRouter).toHaveBeenCalledTimes(1);
+          // Verify that combinedContent passed to analyzeWithOpenRouter includes mockFetchedText
+          const openRouterArgs = (openRouterApi.analyzeWithOpenRouter as jest.Mock).mock.calls[0][0];
+          expect(openRouterArgs).toContain(mockFetchedText);
+        });
+        // Also check if sources are passed to handleSaveAnalysis
+        // This requires handleSaveAnalysis to be not mocked or spied upon if it's from useAnalysisState.
+        // For now, we assume it's called if analyzeWithOpenRouter succeeds.
+    });
 
-    const runButton = screen.getByText(/Run AI Analysis/i);
+    it('Clear Fetched Data button works', async () => {
+        render(<DriveAnalyzer />);
+        enterPrompt();
+
+        // Fetch data
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: /Select Analysis Actor/i }));
+        fireEvent.click(screen.getByText('Article Extractor (Single URL)'));
+        fireEvent.change(screen.getByPlaceholderText('https://example.com/article-page'), { target: { value: 'https://toclear.com' } });
+        const mockFetchedText = "Data to be cleared.";
+        (apifyApi.extractArticleWithApify as jest.Mock).mockResolvedValueOnce({ analyzedText: mockFetchedText, failedUrl: null });
+        fireEvent.click(screen.getByText('Fetch Data from Actor'));
+        
+        const resultsTabTrigger = screen.getByRole('tab', { name: /Data & AI Results/i });
+        fireEvent.click(resultsTabTrigger);
+        await waitFor(() => expect(screen.getByText(mockFetchedText)).toBeInTheDocument());
+
+        // Click clear button
+        const clearButton = screen.getByText('Clear Fetched Data');
+        fireEvent.click(clearButton);
+
+        await waitFor(() => {
+          expect(screen.queryByText(mockFetchedText)).not.toBeInTheDocument();
+          expect(screen.getByText('No data fetched or data was cleared.')).toBeInTheDocument();
+        });
+    });
     
-    // Default: Website crawler, no URL -> button should be disabled or become disabled
-    // In our setup, it's initially enabled if prompt is there, but becomes disabled if no content source is added.
-    // This test focuses on the actor-specific inputs.
-    expect(runButton).toBeDisabled(); // No files, no text, no URLs
+    it('handles error during fetch data stage', async () => {
+        render(<DriveAnalyzer />);
+        enterPrompt();
 
-    // Select Article Extractor, no URL
-    const selectTrigger = screen.getByRole('combobox', { name: /Select Analysis Actor/i });
-    fireEvent.mouseDown(selectTrigger);
-    fireEvent.click(screen.getByText('Article Extractor (Single URL)'));
-    expect(runButton).toBeDisabled(); // Still disabled as article URL is missing
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: /Select Analysis Actor/i }));
+        fireEvent.click(screen.getByText('Article Extractor (Single URL)'));
+        fireEvent.change(screen.getByPlaceholderText('https://example.com/article-page'), { target: { value: 'https://errorfetch.com' } });
 
-    const articleUrlInput = screen.getByPlaceholderText('https://example.com/article-page');
-    fireEvent.change(articleUrlInput, { target: { value: 'https://article.com/extract' } });
-    expect(runButton).not.toBeDisabled(); // Now enabled
+        (apifyApi.extractArticleWithApify as jest.Mock).mockResolvedValueOnce({ 
+            analyzedText: "", 
+            failedUrl: 'https://errorfetch.com',
+            error: "Actor execution failed" 
+        });
+        fireEvent.click(screen.getByText('Fetch Data from Actor'));
 
-    // Select Bing Search, no query
-    fireEvent.mouseDown(selectTrigger);
-    fireEvent.click(screen.getByText('Bing Search Scraper'));
-    expect(runButton).toBeDisabled();
+        await waitFor(() => {
+            expect(jest.requireMock('sonner').toast.error).toHaveBeenCalledWith("Failed to fetch data: Actor execution failed");
+        });
+        const resultsTabTrigger = screen.getByRole('tab', { name: /Data & AI Results/i });
+        fireEvent.click(resultsTabTrigger);
+        expect(screen.queryByText('Fetched Data from Actor')).not.toBeInTheDocument(); // Card should not appear
+    });
 
-    const bingQueryInput = screen.getByPlaceholderText('Enter your search query/queries...');
-    fireEvent.change(bingQueryInput, { target: { value: 'search this' } });
-    expect(runButton).not.toBeDisabled();
-
-     // Select RSS Feed, no URL
-     fireEvent.mouseDown(selectTrigger);
-     fireEvent.click(screen.getByText('RSS/XML Feed Scraper'));
-     expect(runButton).toBeDisabled();
- 
-     const rssUrlInput = screen.getByPlaceholderText('https://example.com/feed.xml');
-     fireEvent.change(rssUrlInput, { target: { value: 'https://myfeed.com/rss' } });
-     expect(runButton).not.toBeDisabled();
-
-    // Back to Website Crawler, no URLs added for it in this flow yet
-    fireEvent.mouseDown(selectTrigger);
-    fireEvent.click(screen.getByText('Website Content Crawler'));
-    expect(runButton).toBeDisabled(); // Disabled as no URLs for crawler
-    
-    const urlInputForCrawler = screen.getByPlaceholderText('https://example.com');
-    fireEvent.change(urlInputForCrawler, { target: { value: 'https://crawl.com' } });
-    const addUrlButton = screen.getByText('Add URL to Session');
-    fireEvent.click(addUrlButton);
-    expect(runButton).not.toBeDisabled(); // Enabled after adding a URL
   });
 
 });
