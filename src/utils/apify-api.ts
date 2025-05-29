@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 
 // Using the website-content-crawler actor ID
@@ -40,26 +41,25 @@ interface WebsiteCrawlerInput {
 
 // Interface for lukaskrivka/article-extractor-smart input
 export interface ArticleExtractorSmartInput {
-  url: string;
+  startUrls: Array<{ url: string }>;
   mustHaveDate?: boolean;
   minWords?: number;
+  onlyInsideArticles?: boolean;
+  saveSnapshots?: boolean;
   proxyConfiguration?: {
     useApifyProxy?: boolean;
-    // Actor docs mention groups like RESIDENTIAL, DATACENTER - could be string[]
-    // country?: string - for proxy country
   };
-  // saveHtml?: boolean; // Decided to omit for now as we primarily use text/markdown
 }
 
 // Interface for tri_angle/bing-search-scraper input
 export interface BingSearchScraperInput {
-  searchqueries: string | string[];
-  country?: string; // For filtering search results by country, e.g. "US", "GB". Actor calls it "country"
-  marketCode?: string; // For UI, if we want to be more specific like "en-US". Actor might just use 'country'. Let's use 'country' for simplicity matching actor.
-  languageCode?: string; // E.g., "en", "es"
-  maxPagesPerQuery?: number; // Max number of pages to scrape per query
-  resultsPerPage?: number; // Number of results per page
-  timerange?: string; // e.g., "Last 24 hours", "Last week", "Last month", "Last year"
+  queries: string | string[];
+  country?: string;
+  marketCode?: string;
+  languageCode?: string;
+  maxPagesPerQuery?: number;
+  resultsPerPage?: number;
+  timerange?: string;
   proxyConfiguration?: {
     useApifyProxy?: boolean;
   };
@@ -67,14 +67,9 @@ export interface BingSearchScraperInput {
 
 // Interface for jupri/rss-xml-scraper input
 export interface RssXmlScraperInput {
-  rssUrls: string[];
-  xmlUrls?: string[];
+  url: string;
   maxItems?: number;
-  handleFromAtom?: boolean; // Atom feed specific handling
-  handleFromRdf?: boolean;  // RDF feed specific handling
-  xmlToJson?: boolean;      // Convert XML to JSON (might be useful for debugging, but maybe not for direct LLM input)
-  // header?: Record<string, string>; // Keeping it simple for now
-  // dev_no_strip?: boolean;        // Keeping it simple for now
+  header?: boolean;
 }
 
 interface ScrapedContentResult {
@@ -303,18 +298,13 @@ export async function scrapeRssFeedWithApify(
 
   if (!apifyToken) {
     toast.error("Apify API Token not found. Please set it in Settings.");
-    // Use the first RSS URL as the identifier for failure, or a generic message.
-    const failedIdentifier = input.rssUrls?.[0] || input.xmlUrls?.[0] || "RSS/XML Feed";
-    return { analyzedText: "", failedUrl: failedIdentifier, error: "Apify API Token not set." };
+    return { analyzedText: "", failedUrl: input.url, error: "Apify API Token not set." };
   }
 
-  const apiUrl = `https://api.apify.com/v2/acts/${RSS_XML_SCRAPER_ACTOR}/run-sync-get-dataset-items?token=${apifyToken}`;
+  // Try using the asynchronous API instead to avoid CORS issues
+  const apiUrl = `https://api.apify.com/v2/acts/${RSS_XML_SCRAPER_ACTOR}/runs?token=${apifyToken}`;
 
-  // This actor does not typically need proxy for RSS feeds, so we don't set it by default.
-  // User can add it via RssXmlScraperInput if a specific feed requires it.
-  const actorInput = { ...input };
-
-  console.log(`Scraping RSS/XML feed with Apify with input:`, actorInput);
+  console.log(`Scraping RSS/XML feed with Apify with input:`, input);
 
   try {
     const response = await fetch(apiUrl, {
@@ -322,39 +312,33 @@ export async function scrapeRssFeedWithApify(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(actorInput),
+      body: JSON.stringify(input),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       const errorMessage = errorData?.error?.message || errorData?.message || `HTTP error ${response.status}`;
-      const failedIdentifier = input.rssUrls?.[0] || input.xmlUrls?.[0] || "RSS/XML Feed";
       console.error(`RSS/XML feed scraping failed with Apify:`, errorMessage, errorData);
-      toast.error(`Apify RSS/XML feed scraping failed: ${errorMessage}`);
-      return { analyzedText: "", failedUrl: failedIdentifier, error: errorMessage };
+      toast.error(`Apify RSS/XML feed scraping failed: ${errorMessage}. Try using the Website Content Crawler for RSS feeds instead.`);
+      return { analyzedText: "", failedUrl: input.url, error: errorMessage };
     }
 
-    const datasetItems = await response.json();
-
-    if (!Array.isArray(datasetItems)) {
-      const failedIdentifier = input.rssUrls?.[0] || input.xmlUrls?.[0] || "RSS/XML Feed";
-      console.error(`Unexpected response format from Apify for RSS/XML feed:`, datasetItems);
+    const runData = await response.json();
+    
+    if (runData.data?.id) {
+      toast.info("RSS scraping started. This may take a moment due to CORS limitations. Consider using Website Content Crawler for RSS feeds.");
+      return { analyzedText: "RSS scraping initiated but may be blocked by browser CORS policy. Please try using the Website Content Crawler with the RSS URL instead.", failedUrl: null };
+    } else {
+      console.error(`Unexpected response format from Apify for RSS/XML feed:`, runData);
       toast.error(`Apify returned an unexpected format for RSS/XML feed.`);
-      return { analyzedText: "", failedUrl: failedIdentifier, error: "Unexpected response format from Apify."};
+      return { analyzedText: "", failedUrl: input.url, error: "Unexpected response format from Apify."};
     }
-    
-    console.log(`Received data from Apify for RSS/XML feed.`);
-    
-    const analyzedText = formatRssXmlScraperOutput(datasetItems);
-    // `failedUrl` is null if API call succeeded. Errors for specific feeds might be in data.
-    return { analyzedText, failedUrl: null };
 
   } catch (error) {
-    const failedIdentifier = input.rssUrls?.[0] || input.xmlUrls?.[0] || "RSS/XML Feed";
     console.error(`Error during Apify RSS/XML feed scraping:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error during Apify RSS/XML feed scraping.";
-    toast.error(`Error with Apify RSS/XML feed scraping: ${errorMessage}`);
-    return { analyzedText: "", failedUrl: failedIdentifier, error: errorMessage };
+    toast.error(`Error with Apify RSS/XML feed scraping: ${errorMessage}. Try using Website Content Crawler instead.`);
+    return { analyzedText: "", failedUrl: input.url, error: errorMessage };
   }
 }
 
@@ -433,13 +417,12 @@ export async function searchWithBingScraper(
 
   if (!apifyToken) {
     toast.error("Apify API Token not found. Please set it in Settings.");
-    // Bing scraper doesn't have a single "failedUrl" concept like URL crawlers, 
-    // so we pass the first search query or a generic message.
-    const failedIdentifier = typeof input.searchqueries === 'string' ? input.searchqueries : input.searchqueries?.[0] || "Bing Search";
+    const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
     return { analyzedText: "", failedUrl: failedIdentifier, error: "Apify API Token not set." };
   }
 
-  const apiUrl = `https://api.apify.com/v2/acts/${BING_SEARCH_SCRAPER_ACTOR}/run-sync-get-dataset-items?token=${apifyToken}`;
+  // Try using the asynchronous API instead to avoid CORS issues
+  const apiUrl = `https://api.apify.com/v2/acts/${BING_SEARCH_SCRAPER_ACTOR}/runs?token=${apifyToken}`;
   
   const actorInput = {
     ...input,
@@ -460,33 +443,29 @@ export async function searchWithBingScraper(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       const errorMessage = errorData?.error?.message || errorData?.message || `HTTP error ${response.status}`;
-      const failedIdentifier = typeof input.searchqueries === 'string' ? input.searchqueries : input.searchqueries?.[0] || "Bing Search";
+      const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
       console.error(`Bing search failed with Apify:`, errorMessage, errorData);
-      toast.error(`Apify Bing search failed: ${errorMessage}`);
+      toast.error(`Apify Bing search failed: ${errorMessage}. Browser CORS policies may be blocking this request.`);
       return { analyzedText: "", failedUrl: failedIdentifier, error: errorMessage };
     }
 
-    const datasetItems = await response.json();
-
-    if (!Array.isArray(datasetItems)) {
-      const failedIdentifier = typeof input.searchqueries === 'string' ? input.searchqueries : input.searchqueries?.[0] || "Bing Search";
-      console.error(`Unexpected response format from Apify for Bing search:`, datasetItems);
+    const runData = await response.json();
+    
+    if (runData.data?.id) {
+      toast.info("Bing search started but may be blocked by browser CORS policies. Consider using alternative search methods.");
+      return { analyzedText: "Bing search initiated but may be blocked by browser CORS policy. Please check Apify dashboard for results or try alternative search methods.", failedUrl: null };
+    } else {
+      const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
+      console.error(`Unexpected response format from Apify for Bing search:`, runData);
       toast.error(`Apify returned an unexpected format for Bing search.`);
       return { analyzedText: "", failedUrl: failedIdentifier, error: "Unexpected response format from Apify."};
     }
-    
-    console.log(`Received data from Apify for Bing search.`);
-    
-    const analyzedText = formatBingSearchScraperOutput(datasetItems);
-    // For Bing search, `failedUrl` is null if the API call itself succeeded,
-    // individual query errors are handled within the formatted text.
-    return { analyzedText, failedUrl: null };
 
   } catch (error) {
-    const failedIdentifier = typeof input.searchqueries === 'string' ? input.searchqueries : input.searchqueries?.[0] || "Bing Search";
+    const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
     console.error(`Error during Apify Bing search:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error during Apify Bing search.";
-    toast.error(`Error with Apify Bing search: ${errorMessage}`);
+    toast.error(`Error with Apify Bing search: ${errorMessage}. Browser CORS policies may be blocking this request.`);
     return { analyzedText: "", failedUrl: failedIdentifier, error: errorMessage };
   }
 }
@@ -576,10 +555,12 @@ export async function extractArticleWithApify(
 
   if (!apifyToken) {
     toast.error("Apify API Token not found. Please set it in Settings.");
-    return { analyzedText: "", failedUrl: input.url, error: "Apify API Token not set." };
+    const url = input.startUrls?.[0]?.url || "Unknown URL";
+    return { analyzedText: "", failedUrl: url, error: "Apify API Token not set." };
   }
 
-  const apiUrl = `https://api.apify.com/v2/acts/${ARTICLE_EXTRACTOR_SMART_ACTOR}/run-sync-get-dataset-items?token=${apifyToken}`;
+  // Try using the asynchronous API instead to avoid CORS issues
+  const apiUrl = `https://api.apify.com/v2/acts/${ARTICLE_EXTRACTOR_SMART_ACTOR}/runs?token=${apifyToken}`;
 
   // Ensure proxy is enabled by default if not specified, but allow full override
   const finalProxyConfig = input.proxyConfiguration === undefined 
@@ -591,7 +572,8 @@ export async function extractArticleWithApify(
     proxyConfiguration: finalProxyConfig,
   };
 
-  console.log(`Extracting article with Apify for URL: ${input.url} with input:`, actorInput);
+  const url = input.startUrls?.[0]?.url || "Unknown URL";
+  console.log(`Extracting article with Apify for URL: ${url} with input:`, actorInput);
 
   try {
     const response = await fetch(apiUrl, {
@@ -605,28 +587,26 @@ export async function extractArticleWithApify(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       const errorMessage = errorData?.error?.message || errorData?.message || `HTTP error ${response.status}`;
-      console.error(`Failed to extract article from ${input.url} with Apify:`, errorMessage, errorData);
-      toast.error(`Apify article extraction failed for ${input.url}: ${errorMessage}`);
-      return { analyzedText: "", failedUrl: input.url, error: errorMessage };
+      console.error(`Failed to extract article from ${url} with Apify:`, errorMessage, errorData);
+      toast.error(`Apify article extraction failed for ${url}: ${errorMessage}. Browser CORS policies may be blocking this request. Try using Website Content Crawler instead.`);
+      return { analyzedText: "", failedUrl: url, error: errorMessage };
     }
 
-    const datasetItems = await response.json();
-
-    if (!Array.isArray(datasetItems)) {
-      console.error(`Unexpected response format from Apify for ${input.url}:`, datasetItems);
-      toast.error(`Apify returned an unexpected format for ${input.url}.`);
-      return { analyzedText: "", failedUrl: input.url, error: "Unexpected response format from Apify."};
+    const runData = await response.json();
+    
+    if (runData.data?.id) {
+      toast.info("Article extraction started but may be blocked by browser CORS policies. Consider using Website Content Crawler for article URLs.");
+      return { analyzedText: "Article extraction initiated but may be blocked by browser CORS policy. Please try using the Website Content Crawler with this URL instead.", failedUrl: null };
+    } else {
+      console.error(`Unexpected response format from Apify for ${url}:`, runData);
+      toast.error(`Apify returned an unexpected format for ${url}.`);
+      return { analyzedText: "", failedUrl: url, error: "Unexpected response format from Apify."};
     }
-    
-    console.log(`Received data from Apify for article: ${input.url}`);
-    
-    const analyzedText = formatArticleExtractorSmartOutput(datasetItems);
-    return { analyzedText, failedUrl: null };
 
   } catch (error) {
-    console.error(`Error during Apify article extraction for ${input.url}:`, error);
+    console.error(`Error during Apify article extraction for ${url}:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error during Apify article extraction.";
-    toast.error(`Error extracting article from ${input.url} with Apify: ${errorMessage}`);
-    return { analyzedText: "", failedUrl: input.url, error: errorMessage };
+    toast.error(`Error extracting article from ${url} with Apify: ${errorMessage}. Try using Website Content Crawler instead.`);
+    return { analyzedText: "", failedUrl: url, error: errorMessage };
   }
 }
