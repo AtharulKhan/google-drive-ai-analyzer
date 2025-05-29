@@ -1,145 +1,4 @@
-
 import { toast } from 'sonner';
-
-// --- New Type Definition & Function ---
-
-export interface ApiActorRunResult {
-  success: boolean;
-  data?: any[];
-  runId?: string;
-  datasetId?: string;
-  error?: any;
-}
-
-/**
- * Runs an Apify actor and retrieves its dataset items using direct HTTP API calls.
- * @param actorId The ID or name of the actor to run (e.g., "username/actor-name").
- * @param input The input object for the actor.
- * @param token The Apify API token.
- * @returns A promise that resolves to an ApiActorRunResult object.
- */
-export async function runApifyActor(
-  actorId: string,
-  input: any,
-  token: string
-): Promise<ApiActorRunResult> {
-  if (!token) {
-    return { success: false, error: { message: "Apify API token is missing." } };
-  }
-
-  try {
-    // Start the actor run
-    const startResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
-
-    if (!startResponse.ok) {
-      const errorData = await startResponse.json().catch(() => ({ message: startResponse.statusText }));
-      throw new Error(errorData?.error?.message || errorData?.message || `HTTP error ${startResponse.status}`);
-    }
-
-    const runData = await startResponse.json();
-    const runId = runData.data.id;
-    const defaultDatasetId = runData.data.defaultDatasetId;
-
-    // Poll for completion
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes with 5-second intervals
-    
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-      
-      const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`);
-      
-      if (!statusResponse.ok) {
-        throw new Error(`Failed to check run status: ${statusResponse.statusText}`);
-      }
-
-      const statusData = await statusResponse.json();
-      const status = statusData.data.status;
-
-      if (status === 'SUCCEEDED') {
-        if (!defaultDatasetId) {
-          return { 
-            success: true, 
-            data: [], 
-            runId: runId, 
-            datasetId: undefined, 
-            error: { message: "Actor run succeeded but no default dataset was produced." }
-          };
-        }
-
-        // Fetch dataset items
-        const datasetResponse = await fetch(`https://api.apify.com/v2/datasets/${defaultDatasetId}/items?token=${token}`);
-        
-        if (!datasetResponse.ok) {
-          throw new Error(`Failed to fetch dataset items: ${datasetResponse.statusText}`);
-        }
-
-        const items = await datasetResponse.json();
-        
-        return {
-          success: true,
-          data: Array.isArray(items) ? items : [],
-          runId: runId,
-          datasetId: defaultDatasetId,
-        };
-      } else if (['FAILED', 'TIMED_OUT', 'ABORTED'].includes(status)) {
-        return {
-          success: false,
-          error: {
-            message: `Actor run failed with status: ${status}.`,
-            details: statusData.data,
-          },
-          runId: runId,
-          datasetId: defaultDatasetId,
-        };
-      }
-
-      attempts++;
-    }
-
-    // Timeout reached
-    return {
-      success: false,
-      error: {
-        message: "Actor run timed out after 5 minutes.",
-      },
-      runId: runId,
-      datasetId: defaultDatasetId,
-    };
-
-  } catch (error: any) {
-    console.error(`Full error details for Apify actor ${actorId} run:`, error);
-
-    let errorMessage = 'An unexpected error occurred during actor execution.';
-    if (error instanceof Error) {
-        errorMessage = error.message;
-    } else if (typeof error === 'object' && error && 'message' in error) {
-        errorMessage = String(error.message);
-    }
-    
-    if (errorMessage.includes('Invalid token') || errorMessage.includes('401')) {
-         return { success: false, error: { message: "Invalid Apify API token. Please check your token in Settings.", details: error } };
-    }
-
-    return {
-      success: false,
-      error: {
-        message: errorMessage,
-        details: error,
-      },
-    };
-  }
-}
-
-// --- Existing Code ---
-// The following functions are specific to the 'apify~website-content-crawler' actor
-// and use a different API interaction pattern for synchronous execution.
 
 // Using the website-content-crawler actor ID
 const ACTOR_NAME_OR_ID = 'apify~website-content-crawler';
@@ -191,13 +50,17 @@ function formatDatasetItemsToText(items: any[]): string {
   items.forEach((item, index) => {
     formattedText += `## Page ${index + 1}: ${item.url}\n\n`;
     
+    // Add the title if available
     if (item.title) {
       formattedText += `### ${item.title}\n\n`;
     }
 
+    // Add the markdown content if available (primary content format)
     if (item.markdown) {
       formattedText += item.markdown + "\n\n";
-    } else if (item.text) {
+    }
+    // If no markdown, use text content
+    else if (item.text) {
       formattedText += item.text + "\n\n";
     }
 
@@ -207,18 +70,9 @@ function formatDatasetItemsToText(items: any[]): string {
   return formattedText;
 }
 
-function isValidUrl(url: string): boolean {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 export async function analyzeUrlWithApify(
   url: string, 
-  options: ApifyCrawlingOptions = {}
+  options: ApifyCrawlingOptions = {} // Default empty options object
 ): Promise<ScrapedContentResult> {
   const apifyToken = localStorage.getItem('apifyApiToken');
 
@@ -227,42 +81,45 @@ export async function analyzeUrlWithApify(
     return { analyzedText: "", failedUrl: url, error: "Apify API Token not set." };
   }
 
-  // Validate URL
-  if (!isValidUrl(url)) {
-    toast.error("Invalid URL. Please enter a valid HTTP or HTTPS URL.");
-    return { analyzedText: "", failedUrl: url, error: "Invalid URL format." };
-  }
-
+  // Build the API URL for website-content-crawler
   const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_NAME_OR_ID}/run-sync-get-dataset-items?token=${apifyToken}`;
 
+  // Set default options
   const defaultOptions = {
-    maxCrawlDepth: 0,
-    maxCrawlPages: 1,
-    maxResults: 1,
-    crawlerType: "cheerio",
-    useSitemaps: false,
-    includeIndirectLinks: false,
-    maxIndirectLinks: 5,
-    maxRequestsPerCrawl: 10,
-    maxConcurrency: 5,
-    saveSnapshots: false,
-    includeUrlGlobs: [],
-    excludeUrlGlobs: []
+    maxCrawlDepth: 0, // Default to crawling only the provided URL (no links)
+    maxCrawlPages: 1, // Default to crawling just 1 page
+    maxResults: 1, // Default to storing only 1 result
+    crawlerType: "cheerio", // Default to faster raw HTTP crawler
+    useSitemaps: false, // Default to not using sitemaps
+    includeIndirectLinks: false, // Default to not following indirect links
+    maxIndirectLinks: 5, // Default limit for indirect links if enabled
+    maxRequestsPerCrawl: 10, // Default to 10 requests per crawl
+    maxConcurrency: 5, // Default to 5 concurrent requests
+    saveSnapshots: false, // Default to not saving snapshots
+    includeUrlGlobs: [], // Default to no include URL globs
+    excludeUrlGlobs: [] // Default to no exclude URL globs
   };
 
+  // Merge default options with provided options
   const mergedOptions = { ...defaultOptions, ...options };
   
+  // Make sure maxResults is at least equal to maxCrawlPages to save all crawled content
+  // This ensures we store results for every page we crawl
   if (mergedOptions.maxResults < mergedOptions.maxCrawlPages) {
     mergedOptions.maxResults = mergedOptions.maxCrawlPages;
+    console.log(`Automatically adjusted maxResults to match maxCrawlPages: ${mergedOptions.maxCrawlPages}`);
   }
 
+  // If including indirect links, adjust maxCrawlPages and maxResults accordingly
   if (mergedOptions.includeIndirectLinks && mergedOptions.maxIndirectLinks) {
     const totalPages = mergedOptions.maxCrawlPages + mergedOptions.maxIndirectLinks;
-    if (mergedOptions.maxResults && mergedOptions.maxResults < totalPages) {
+    if (mergedOptions.maxResults < totalPages) {
       mergedOptions.maxResults = totalPages;
+      console.log(`Adjusted maxResults to accommodate indirect links: ${mergedOptions.maxResults}`);
     }
   }
 
+  // Prepare the input according to website-content-crawler schema
   const input: ApifyActorInput = {
     startUrls: [{ url }],
     useSitemaps: mergedOptions.useSitemaps,
@@ -277,18 +134,16 @@ export async function analyzeUrlWithApify(
     }
   };
 
+  // Add pseudo URLs for indirect links if enabled
   if (mergedOptions.includeIndirectLinks) {
-    try {
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname.replace(/\./g, '\\.');
-      input.pseudoUrls = [{ purl: `[https?://([^/]+${hostname}|${hostname})[/]?.*]` }];
-      input.linkSelector = "a[href]";
-    } catch (e) {
-      console.warn("Failed to create pseudo URL pattern:", e);
-    }
+    // This will match any URL from the same domain
+    input.pseudoUrls = [{ purl: `[https?://([^/]+${new URL(url).hostname.replace(/\./g, '\\.')}|${new URL(url).hostname.replace(/\./g, '\\.')})[/]?.*]` }];
+    // Include a general link selector to capture more links
+    input.linkSelector = "a[href]";
   }
 
   console.log(`Analyzing URL with options:`, mergedOptions);
+  console.log(`Sending request to Apify for URL: ${url} with input:`, input);
 
   try {
     const response = await fetch(apiUrl, {
@@ -328,13 +183,15 @@ export async function analyzeUrlWithApify(
   }
 }
 
+// Function to analyze multiple URLs
 export async function analyzeMultipleUrlsWithApify(
   urls: string[],
-  options: ApifyCrawlingOptions = {}
+  options: ApifyCrawlingOptions = {} // Default empty options object
 ): Promise<{ combinedAnalyzedText: string; failedUrls: string[] }> {
   let combinedAnalyzedText = "";
   const failedUrls: string[] = [];
 
+  // For multiple URLs, we'll process them sequentially to avoid overwhelming the API
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
     const result = await analyzeUrlWithApify(url, options);
@@ -346,7 +203,7 @@ export async function analyzeMultipleUrlsWithApify(
     } else {
       combinedAnalyzedText += result.analyzedText + "\n\n";
     }
-    combinedAnalyzedText += "---\n\n";
+    combinedAnalyzedText += "---\n\n"; // Separator between analyses
   }
 
   return { combinedAnalyzedText, failedUrls };

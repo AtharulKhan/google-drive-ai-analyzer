@@ -12,7 +12,6 @@ import StatsPage from './pages/StatsPage';
 import NotFound from './pages/NotFound';
 import DriveAnalyzerPage from './pages/DriveAnalyzerPage';
 import SettingsPage from './pages/SettingsPage';
-import ApifyActorsPage from './pages/ApifyActorsPage';
 
 function App() {
   return (
@@ -26,7 +25,6 @@ function App() {
         <Route path="/finances" element={<FinancePage />} />
         <Route path="/statistiques" element={<StatsPage />} />
         <Route path="/drive-analyzer" element={<DriveAnalyzerPage />} />
-        <Route path="/apify-actors" element={<ApifyActorsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

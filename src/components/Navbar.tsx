@@ -9,8 +9,7 @@ import {
   X,
   Sun,
   Moon,
-  ChevronRight,
-  Shapes
+  ChevronRight
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -49,7 +48,6 @@ const Navbar = () => {
 
   const navItems = [
     { title: 'Google Drive AI Analyzer', path: '/drive-analyzer', icon: Cloud },
-    { title: 'Apify Actors', path: '/apify-actors', icon: Shapes },
     { title: 'Settings', path: '/settings', icon: Settings },
   ];
 
