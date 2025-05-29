@@ -13,7 +13,7 @@ import { getDefaultAIModel } from "@/utils/ai-models"; // Added for AI model sel
 import SmartArticleExtractorForm from '@/components/apify-actors/SmartArticleExtractorForm';
 import BingSearchScraperForm from '@/components/apify-actors/BingSearchScraperForm';
 import RssXmlScraperForm from '@/components/apify-actors/RssXmlScraperForm';
-import { runApifyActor, ActorRunResult as ApiActorRunResult } from '@/utils/apify-api'; // Updated import
+import { runApifyActor, ApiActorRunResult } from '@/utils/apify-api'; // Fixed import
 
 // Define the extended ActorRunResult type
 interface ActorRunResult extends ApiActorRunResult {
@@ -74,7 +74,6 @@ const ApifyActorsPage: React.FC = () => {
     const actualActorId = actorToRun.actualActorId;
 
     setIsRunningActor(true);
-    // setActorRunResult(null); // This state is removed
     setActorRunError(null);
 
     try {
@@ -88,14 +87,12 @@ const ApifyActorsPage: React.FC = () => {
           timestamp: new Date().toISOString(),
         };
         setActorRunResultsData(prevResults => [...prevResults, newResult]);
-        // console.log(`Actor ${actorToRun.name} finished successfully. Results:`, newResult.data); // Debug log removed
         toast.success(`${actorToRun.name} finished successfully!`, {
           description: `${newResult.data?.length || 0} items fetched. Run ID: ${newResult.runId}`,
         });
       } else {
         const errorMessage = typeof result.error === 'string' ? result.error : result.error?.message || 'Actor run failed. Check console for details.';
         setActorRunError(result.error || { message: 'Actor run failed. Check console for details.' });
-        // console.error(`Actor ${actorToRun.name} failed. Error:`, result.error, "Run ID:", result.runId); // Debug log removed
         toast.error(`${actorToRun.name} failed.`, {
           description: `Error: ${errorMessage}. Run ID: ${result.runId || 'N/A'}. Check console for details.`,
         });
@@ -103,7 +100,6 @@ const ApifyActorsPage: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error.message || 'An unexpected error occurred during actor execution.';
       setActorRunError({ message: errorMessage, details: error });
-      // console.error(`Unexpected error running actor ${actorToRun.name}:`, error); // Debug log removed
       toast.error(`An unexpected error occurred with ${actorToRun.name}.`, {
         description: errorMessage || 'Check console for details.',
       });
@@ -212,7 +208,7 @@ const ApifyActorsPage: React.FC = () => {
 
       const preferredModel = getDefaultAIModel(); 
 
-      const analysis = await analyzeWithOpenRouter(userPrompt, contextData, openRouterApiKey, preferredModel);
+      const analysis = await analyzeWithOpenRouter(userPrompt, contextData, openRouterApiKey);
       
       if (analysis.success && analysis.markdownReport) {
         setAiAnalysisResult(analysis.markdownReport);
@@ -223,7 +219,6 @@ const ApifyActorsPage: React.FC = () => {
         toast.error("AI Analysis Failed", { description: errorMsg });
       }
     } catch (error: any) {
-      // console.error("Error during AI analysis:", error); // Debug log removed
       const errorMsg = error.message || "An unexpected error occurred during AI analysis.";
       setAiAnalysisError(errorMsg);
       toast.error("AI Analysis Error", { description: errorMsg });
@@ -328,8 +323,6 @@ const ApifyActorsPage: React.FC = () => {
                   {actorRunResultsData.length > 0 && !isRunningActor && (
                     <Button variant="outline" size="sm" onClick={() => {
                       setActorRunResultsData([]);
-                      // setActorRunError(null); // Keep last error until a new run starts or actor changes? Or clear it?
-                                               // For now, let's clear it to avoid confusion.
                       setActorRunError(null);
                       toast.info("All actor run results cleared.");
                     }}>
