@@ -1,7 +1,112 @@
 import { toast } from 'sonner';
+import { ApifyClient } from 'apify-client';
+
+// --- New Type Definition & Function ---
+
+export interface ApiActorRunResult {
+  success: boolean;
+  data?: any[];
+  runId?: string;
+  datasetId?: string;
+  error?: any;
+}
+
+/**
+ * Runs an Apify actor and retrieves its dataset items.
+ * @param actorId The ID or name of the actor to run (e.g., "username/actor-name").
+ * @param input The input object for the actor.
+ * @param token The Apify API token.
+ * @returns A promise that resolves to an ApiActorRunResult object.
+ */
+export async function runApifyActor(
+  actorId: string,
+  input: any,
+  token: string
+): Promise<ApiActorRunResult> {
+  if (!token) {
+    // This case should ideally be caught before calling, but good to have a safeguard.
+    return { success: false, error: { message: "Apify API token is missing." } };
+  }
+
+  const client = new ApifyClient({ token });
+
+  try {
+    const actorRun = await client.actor(actorId).call(input);
+
+    // waitForFinish will wait for the run to finish, polling at intervals.
+    // It resolves with the final Run object once it's in a terminal state.
+    const finishedRun = await client.run(actorRun.id).waitForFinish(); 
+
+    if (finishedRun.status === 'SUCCEEDED') {
+      if (!actorRun.defaultDatasetId) {
+        // Actor succeeded but might not have produced a dataset (or it's not the default one).
+        // This is not necessarily an error for all actors.
+        // Consider this a success with a specific message/status.
+        return { 
+          success: true, 
+          data: [], // No data from default dataset
+          runId: actorRun.id, 
+          datasetId: undefined, 
+          error: { message: "Actor run succeeded but no default dataset was produced." } // Informational message
+        };
+      }
+      // Attempt to fetch items from the default dataset.
+      const { items } = await client.dataset(actorRun.defaultDatasetId).listItems();
+      return {
+        success: true,
+        data: items,
+        runId: actorRun.id,
+        datasetId: actorRun.defaultDatasetId,
+      };
+    } else {
+      // Handle other terminal statuses: TIMED_OUT, FAILED, ABORTED
+      console.error(`Actor run ${actorRun.id} did not succeed. Status: ${finishedRun.status}`, finishedRun);
+      // Attempt to get more error info if available (e.g. from a log or specific error fields in actor output)
+      // For now, we return the run object itself for details.
+      return {
+        success: false,
+        error: {
+          message: `Actor run failed with status: ${finishedRun.status}.`,
+          details: finishedRun, // Contains the full run object
+        },
+        runId: actorRun.id,
+        datasetId: actorRun.defaultDatasetId,
+      };
+    }
+  } catch (error: any) {
+    // Log the detailed error for server-side or developer inspection
+    console.error(`Full error details for Apify actor ${actorId} run:`, error);
+
+    let errorMessage = 'An unexpected error occurred during actor execution.';
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    } else if (typeof error === 'object' && error && 'message' in error) {
+        errorMessage = String(error.message);
+    }
+    
+    if (errorMessage.includes('Invalid token') || (error.type === 'invalid_token')) { // ApifyClient specific error type
+         return { success: false, error: { message: "Invalid Apify API token. Please check your token in Settings.", details: error } };
+    }
+    // Provide a user-friendly error message, and include the original error for debugging.
+    return {
+      success: false,
+      error: {
+        message: errorMessage,
+        details: error, // Keep original error for more context if needed by caller
+      },
+    };
+  }
+}
+
+// --- Existing Code ---
+// The following functions (analyzeUrlWithApify, analyzeMultipleUrlsWithApify, formatDatasetItemsToText) 
+// are specific to the 'apify~website-content-crawler' actor and use a different Apify API interaction pattern.
+// They are not directly used by the generic ApifyActorsPage functionality but might be in use by other parts
+// of the application (e.g., a specific Drive Analyzer feature).
+// Consider refactoring or removing if confirmed to be unused across the entire application.
 
 // Using the website-content-crawler actor ID
-const ACTOR_NAME_OR_ID = 'apify~website-content-crawler';
+const ACTOR_NAME_OR_ID = 'apify~website-content-crawler'; // Specific to the functions below
 
 export interface ApifyCrawlingOptions {
   maxCrawlDepth?: number;
