@@ -18,46 +18,33 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    const { actorId, input, endpoint = 'run-sync-get-dataset-items', googleUserId } = await req.json()
+
+    if (!actorId || !input) {
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
+        JSON.stringify({ error: 'Missing actorId or input' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!googleUserId) {
+      return new Response(
+        JSON.stringify({ error: 'Google user authentication required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Verify the user
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Get user's Apify API token
+    // Get user's Apify API token using Google user ID
     const { data: tokenData, error: tokenError } = await supabase
       .from('user_api_tokens')
       .select('api_token')
-      .eq('user_id', user.id)
+      .eq('user_id', googleUserId)
       .eq('service', 'apify')
       .single()
 
     if (tokenError || !tokenData?.api_token) {
       return new Response(
         JSON.stringify({ error: 'Apify API token not found. Please add it in Settings.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const { actorId, input, endpoint = 'run-sync-get-dataset-items' } = await req.json()
-
-    if (!actorId || !input) {
-      return new Response(
-        JSON.stringify({ error: 'Missing actorId or input' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

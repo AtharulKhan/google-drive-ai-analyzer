@@ -18,27 +18,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Verify the user
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const { service, apiToken } = await req.json()
+    const { service, apiToken, googleUserId } = await req.json()
 
     if (!service || !apiToken) {
       return new Response(
@@ -47,11 +27,18 @@ Deno.serve(async (req) => {
       )
     }
 
+    if (!googleUserId) {
+      return new Response(
+        JSON.stringify({ error: 'Google user authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Store the encrypted API token in user_api_tokens table
     const { error: insertError } = await supabase
       .from('user_api_tokens')
       .upsert({
-        user_id: user.id,
+        user_id: googleUserId,
         service: service,
         api_token: apiToken, // In production, you'd want to encrypt this
         updated_at: new Date().toISOString()
