@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import { toast } from 'sonner';
 import { Textarea } from "@/components/ui/textarea"; // Added for AI Prompt
 import { Markdown } from "@/components/ui/markdown"; // Added for AI Result Display
 import { analyzeWithOpenRouter } from "@/utils/openrouter-api"; // Added for AI Analysis
-import { getDefaultAIModel } from "@/utils/ai-models"; // Added for AI model selection
 import SmartArticleExtractorForm from '@/components/apify-actors/SmartArticleExtractorForm';
 import BingSearchScraperForm from '@/components/apify-actors/BingSearchScraperForm';
 import RssXmlScraperForm from '@/components/apify-actors/RssXmlScraperForm';
