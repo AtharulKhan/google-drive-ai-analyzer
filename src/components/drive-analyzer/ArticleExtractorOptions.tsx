@@ -45,23 +45,23 @@ export function ArticleExtractorOptions({ options, onOptionChange }: ArticleExtr
 
       <div className="flex items-center space-x-2">
         <Checkbox
-          id="onlyNewArticles"
-          checked={options.onlyNewArticles || false}
-          onCheckedChange={(checked) => onOptionChange('onlyNewArticles', !!checked)}
+          id="onlyNewArticlesPerDomain"
+          checked={options.onlyNewArticlesPerDomain || false}
+          onCheckedChange={(checked) => onOptionChange('onlyNewArticlesPerDomain', !!checked)}
         />
-        <Label htmlFor="onlyNewArticles" className="text-sm">
-          Only New Articles
+        <Label htmlFor="onlyNewArticlesPerDomain" className="text-sm">
+          Only New Articles Per Domain
         </Label>
       </div>
 
       <div className="flex items-center space-x-2">
         <Checkbox
-          id="saveHtml"
-          checked={options.saveHtml || false}
-          onCheckedChange={(checked) => onOptionChange('saveHtml', !!checked)}
+          id="saveHtmlAsLink"
+          checked={options.saveHtmlAsLink || false}
+          onCheckedChange={(checked) => onOptionChange('saveHtmlAsLink', !!checked)}
         />
-        <Label htmlFor="saveHtml" className="text-sm">
-          Save Full HTML
+        <Label htmlFor="saveHtmlAsLink" className="text-sm">
+          Save HTML as Link
         </Label>
       </div>
     </div>

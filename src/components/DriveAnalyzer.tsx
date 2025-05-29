@@ -189,15 +189,15 @@ export default function DriveAnalyzer() {
           operationResult = { analyzedText: "", error: "No content fetched, some URLs may have failed." };
         }
       } else if (selectedActor === ACTOR_ARTICLE_EXTRACTOR) {
-        const articleInput: ArticleExtractorSmartInput = { url: articleExtractorUrl, ...currentActorOpts };
+        const articleInput: ArticleExtractorSmartInput = { startUrls: [{ url: articleExtractorUrl }], ...currentActorOpts };
         operationResult = await extractArticleWithApify(articleInput);
         if (!operationResult.error) sourcesForCurrentFetch.push({ type: 'url', name: articleExtractorUrl, actor: ACTOR_ARTICLE_EXTRACTOR });
       } else if (selectedActor === ACTOR_BING_SEARCH) {
-        const bingInput: BingSearchScraperInput = { searchqueries: bingSearchQuery, ...currentActorOpts };
+        const bingInput: BingSearchScraperInput = { queries: bingSearchQuery, ...currentActorOpts };
         operationResult = await searchWithBingScraper(bingInput);
         if (!operationResult.error) sourcesForCurrentFetch.push({ type: 'search', name: bingSearchQuery, actor: ACTOR_BING_SEARCH });
       } else if (selectedActor === ACTOR_RSS_SCRAPER) {
-        const rssInput: RssXmlScraperInput = { rssUrls: [rssFeedUrl], ...currentActorOpts };
+        const rssInput: RssXmlScraperInput = { url: rssFeedUrl, ...currentActorOpts };
         operationResult = await scrapeRssFeedWithApify(rssInput);
         if (!operationResult.error) sourcesForCurrentFetch.push({ type: 'feed', name: rssFeedUrl, actor: ACTOR_RSS_SCRAPER });
       }
@@ -227,7 +227,7 @@ export default function DriveAnalyzer() {
   }, [
     selectedActor, actorSpecificOptions, urls, articleExtractorUrl, bingSearchQuery, rssFeedUrl, 
     isActorInputValid, initialWebsiteCrawlerOptions, processingStatus.isProcessing, 
-    setAiOutput // Added missing dependencies based on usage
+    setAiOutput
   ]);
 
   const handleLocalFilesSelected = useCallback((files: File[]) => setLocalFiles(files), []);
@@ -266,7 +266,7 @@ export default function DriveAnalyzer() {
       else if (selectedActor === ACTOR_BING_SEARCH) actorDataHeader = `### Fetched Bing Search Results (Query: "${bingSearchQuery}")\n\n`;
       else if (selectedActor === ACTOR_RSS_SCRAPER) actorDataHeader = `### Fetched RSS Feed Content (Source URL: ${rssFeedUrl})\n\n`;
       
-      if (fetchedActorData.trim().startsWith("The following")) { // Check for formatter's preamble
+      if (fetchedActorData.trim().startsWith("The following")) {
         contentToAnalyze.push(fetchedActorData);
       } else {
         contentToAnalyze.push(actorDataHeader + fetchedActorData);
@@ -280,24 +280,28 @@ export default function DriveAnalyzer() {
     
     const totalAIPhaseItems = (fetchedActorData ? 1 : 0) + (pastedText.trim() ? 1 : 0) + localFiles.length + selectedFiles.length;
 
-    if (totalAIPhaseItems === 0 && !isActorInputValid()) { // Also check if actor input is invalid as a last resort for no data
+    if (totalAIPhaseItems === 0 && !isActorInputValid()) {
       toast.error("No data to analyze. Fetch data, paste text, or select files.");
       return;
     }
-     if (totalAIPhaseItems === 0 && fetchedActorData === "") { // Fetched data is explicitly empty string
+     if (totalAIPhaseItems === 0 && fetchedActorData === "") {
         toast.info("No content available to analyze (fetched data was empty).");
         return;
     }
-     if (totalAIPhaseItems === 0) { // General catch for no data after all checks
+     if (totalAIPhaseItems === 0) {
         toast.error("No data available from any source to analyze.");
         return;
     }
     
     setProcessingStatus({ 
-      isProcessing: true, currentStep: "Preparing data for AI...",
-      progress: 0, totalFiles: totalAIPhaseItems, processedFiles: 0,
+      isProcessing: true, 
+      currentStep: "Preparing data for AI...",
+      progress: 0, 
+      totalFiles: totalAIPhaseItems, 
+      processedFiles: 0,
     });
-    setAiOutput(""); setActiveTab("result");
+    setAiOutput(""); 
+    setActiveTab("result");
 
     let aiItemsProcessed = 0;
     const updateTotalAIProgress = (itemsIncrement = 1) => {
@@ -308,7 +312,8 @@ export default function DriveAnalyzer() {
             currentProgress = Math.round((aiItemsProcessed / totalAIPhaseItems) * fileProcessingProgress);
         }
         setProcessingStatus(prev => ({ 
-            ...prev, progress: Math.min(currentProgress, fileProcessingProgress), 
+            ...prev, 
+            progress: Math.min(currentProgress, fileProcessingProgress), 
             processedFiles: aiItemsProcessed 
         }));
     };
@@ -335,7 +340,13 @@ export default function DriveAnalyzer() {
     if (selectedFiles.length > 0) {
         if (!accessToken) {
             toast.error("Please sign in to Google Drive to process selected files.");
-            setProcessingStatus({ isProcessing: false, currentStep: "", progress: 0, totalFiles: 0, processedFiles: 0 });
+            setProcessingStatus({ 
+              isProcessing: false, 
+              currentStep: "", 
+              progress: 0, 
+              totalFiles: 0, 
+              processedFiles: 0 
+            });
             return;
         }
         setProcessingStatus(prev => ({ ...prev, currentStep: `Processing ${selectedFiles.length} Google Drive file(s)...`}));
@@ -377,14 +388,23 @@ export default function DriveAnalyzer() {
 
       const result = await analyzeWithOpenRouter(combinedContent, finalPrompt, { model: aiModel });
       setAiOutput(result);
-      setProcessingStatus({ isProcessing: false, currentStep: "AI Analysis Complete!", progress: 100 });
+      setProcessingStatus({ 
+        isProcessing: false, 
+        currentStep: "AI Analysis Complete!", 
+        progress: 100, 
+        totalFiles: totalAIPhaseItems, 
+        processedFiles: totalAIPhaseItems 
+      });
       toast.success("AI Analysis completed successfully");
 
       const currentTimestamp = Date.now();
       const newAnalysis: SavedAnalysis = {
         id: currentTimestamp.toString(),
         title: `Analysis - ${new Date(currentTimestamp).toLocaleString()}`,
-        timestamp: currentTimestamp, prompt: userPrompt, aiOutput: result, sources: sourcesForThisAISession, 
+        timestamp: currentTimestamp, 
+        prompt: userPrompt, 
+        aiOutput: result, 
+        sources: sourcesForThisAISession, 
       };
       handleSaveAnalysis(newAnalysis);
       if (selectedAnalysisIdsForPrompt.length > 0) {
@@ -393,7 +413,13 @@ export default function DriveAnalyzer() {
     } catch (error) {
       console.error("Error during AI analysis:", error);
       toast.error(`AI analysis failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-      setProcessingStatus({ isProcessing: false, currentStep: "", progress: 0, totalFiles: 0, processedFiles: 0 });
+      setProcessingStatus({ 
+        isProcessing: false, 
+        currentStep: "", 
+        progress: 0, 
+        totalFiles: 0, 
+        processedFiles: 0 
+      });
     }
 }, [
     accessToken, userPrompt, customInstructions, aiModel, 
@@ -401,8 +427,8 @@ export default function DriveAnalyzer() {
     pastedText, localFiles, selectedFiles, selectedActor, 
     handleSaveAnalysis, 
     savedAnalyses, selectedAnalysisIdsForPrompt, toggleAnalysisSelectionForPrompt,
-    setActiveTab, setAiOutput, setProcessingStatus, // Removed processingStatus from here
-    urls, articleExtractorUrl, bingSearchQuery, rssFeedUrl, isActorInputValid // Added isActorInputValid
+    setActiveTab, setAiOutput, setProcessingStatus,
+    urls, articleExtractorUrl, bingSearchQuery, rssFeedUrl, isActorInputValid
 ]);
 
   const handleSavePrompt = useCallback(() => {

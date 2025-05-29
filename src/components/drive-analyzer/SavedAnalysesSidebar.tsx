@@ -25,20 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Edit2, Trash2, Eye, XCircle } from 'lucide-react';
-
-// Conceptual - for prop definition, will be moved to a shared types file later
-export interface SavedAnalysisSource {
-  type: 'file' | 'url' | 'text';
-  name: string;
-}
-export interface SavedAnalysis {
-  id: string;
-  title: string;
-  timestamp: number;
-  prompt: string;
-  aiOutput: string;
-  sources: SavedAnalysisSource[];
-}
+import { SavedAnalysis, SavedAnalysisSource } from '@/components/drive-analyzer/SavedAnalysisDetailView';
 
 interface SavedAnalysesSidebarProps {
   isOpen: boolean;
