@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -197,16 +196,7 @@ const ApifyActorsPage: React.FC = () => {
         return;
       }
 
-      const openRouterApiKey = localStorage.getItem('openRouterApiKey');
-      if (!openRouterApiKey) {
-        toast.error("OpenRouter API Key is missing.", {
-          description: "Please set your OpenRouter API key in the settings page.",
-        });
-        setIsAnalyzingWithAI(false);
-        return;
-      }
-
-      const analysis = await analyzeWithOpenRouter(contextData, userPrompt, openRouterApiKey);
+      const analysis = await analyzeWithOpenRouter(contextData, userPrompt);
       
       if (analysis.success && analysis.markdownReport) {
         setAiAnalysisResult(analysis.markdownReport);
