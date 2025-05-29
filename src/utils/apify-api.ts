@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -86,17 +85,24 @@ interface ScrapedContentResult {
 function getGoogleUserInfo() {
   const accessToken = localStorage.getItem('googleAccessToken');
   const isSignedIn = localStorage.getItem('googleIsSignedIn') === 'true';
+  const userInfoStr = localStorage.getItem('googleUserInfo');
   
-  if (!accessToken || !isSignedIn) {
+  if (!accessToken || !isSignedIn || !userInfoStr) {
     return null;
   }
   
-  // For now, we'll use the access token as a user identifier
-  // In a production app, you'd want to decode the JWT or make an API call to get the actual user ID
-  return {
-    id: accessToken.substring(0, 32), // Use first 32 chars as a pseudo user ID
-    accessToken
-  };
+  try {
+    const userInfo = JSON.parse(userInfoStr);
+    return {
+      id: userInfo.id, // This is the actual Google user ID, not the access token
+      email: userInfo.email,
+      name: userInfo.name,
+      accessToken
+    };
+  } catch (error) {
+    console.error('Error parsing user info from localStorage:', error);
+    return null;
+  }
 }
 
 // Helper function to call Apify via Edge Function with Google auth
@@ -112,7 +118,7 @@ async function callApifyViaEdgeFunction(actorId: string, input: any, endpoint: s
       actorId,
       input,
       endpoint,
-      googleUserId: googleUser.id // Pass Google user ID
+      googleUserId: googleUser.id // Pass the actual Google user ID
     },
     headers: {
       'Authorization': `Bearer ${googleUser.accessToken}`

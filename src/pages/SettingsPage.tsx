@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
-  const { clientId, setClientId, isSignedIn } = useGoogleAuth();
+  const { clientId, setClientId, isSignedIn, userInfo } = useGoogleAuth();
   const [clientIdInput, setClientIdInput] = useState(clientId || '');
   
   // State for OpenRouter API key
@@ -21,21 +21,6 @@ export default function SettingsPage() {
   // State for Apify API key
   const [apifyToken, setApifyToken] = useState('');
   const [showApifyToken, setShowApifyToken] = useState(false);
-  
-  // Helper function to get Google user info
-  const getGoogleUserInfo = () => {
-    const accessToken = localStorage.getItem('googleAccessToken');
-    const isUserSignedIn = localStorage.getItem('googleIsSignedIn') === 'true';
-    
-    if (!accessToken || !isUserSignedIn) {
-      return null;
-    }
-    
-    return {
-      id: accessToken.substring(0, 32), // Use first 32 chars as a pseudo user ID
-      accessToken
-    };
-  };
   
   // Load API keys from localStorage on component mount
   useEffect(() => {
@@ -48,16 +33,15 @@ export default function SettingsPage() {
     
     // Load Apify token from Supabase if user is authenticated
     loadApifyToken();
-  }, [isSignedIn]);
+  }, [isSignedIn, userInfo]);
   
   const loadApifyToken = async () => {
-    const googleUser = getGoogleUserInfo();
-    if (!googleUser) return;
+    if (!userInfo?.id) return;
 
     const { data, error } = await supabase
       .from('user_api_tokens')
       .select('api_token')
-      .eq('user_id', googleUser.id)
+      .eq('user_id', userInfo.id)
       .eq('service', 'apify')
       .single();
 
@@ -85,8 +69,7 @@ export default function SettingsPage() {
       return;
     }
 
-    const googleUser = getGoogleUserInfo();
-    if (!googleUser) {
+    if (!userInfo?.id) {
       toast.error("Please sign in with Google to save your Apify token");
       return;
     }
@@ -96,7 +79,7 @@ export default function SettingsPage() {
         body: {
           service: 'apify',
           apiToken: apifyToken.trim(),
-          googleUserId: googleUser.id
+          googleUserId: userInfo.id
         }
       });
 
@@ -227,7 +210,6 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
         
-        {/* Updated Apify API Configuration Card */}
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Apify API Configuration</CardTitle>
@@ -244,6 +226,19 @@ export default function SettingsPage() {
                   <div>
                     <p className="text-sm text-red-800 dark:text-red-400">
                       You must be signed in with Google to save your Apify API token securely.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isSignedIn && userInfo && (
+              <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-md border border-green-200 dark:border-green-800 mb-4">
+                <div className="flex gap-2 items-start">
+                  <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-500 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-green-800 dark:text-green-400">
+                      Signed in as: {userInfo.email}
                     </p>
                   </div>
                 </div>
