@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -24,17 +24,31 @@ export default function SettingsPage() {
   // Load API keys from localStorage on component mount
   useEffect(() => {
     const savedOpenRouterKey = localStorage.getItem('openRouterApiKey') || '';
-    const savedApifyToken = localStorage.getItem('apifyApiToken') || '';
     
     // If keys exist, show them
     if (savedOpenRouterKey) {
       setOpenRouterKey(savedOpenRouterKey);
     }
     
-    if (savedApifyToken) {
-      setApifyToken(savedApifyToken);
-    }
+    // Load Apify token from Supabase if user is authenticated
+    loadApifyToken();
   }, []);
+  
+  const loadApifyToken = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('user_api_tokens')
+      .select('api_token')
+      .eq('user_id', user.id)
+      .eq('service', 'apify')
+      .single();
+
+    if (data?.api_token) {
+      setApifyToken(data.api_token);
+    }
+  };
   
   const handleSaveClientId = () => {
     if (clientIdInput.trim()) {
@@ -49,10 +63,36 @@ export default function SettingsPage() {
     }
   };
   
-  const handleSaveApifyToken = () => {
-    if (apifyToken.trim()) {
-      localStorage.setItem('apifyApiToken', apifyToken.trim());
-      toast.success("Apify API Token saved successfully");
+  const handleSaveApifyToken = async () => {
+    if (!apifyToken.trim()) {
+      toast.error("Please enter an Apify API token");
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Please sign in to save your Apify token");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('store-api-token', {
+        body: {
+          service: 'apify',
+          apiToken: apifyToken.trim()
+        }
+      });
+
+      if (error) {
+        console.error('Error saving Apify token:', error);
+        toast.error("Failed to save Apify token");
+        return;
+      }
+
+      toast.success("Apify API Token saved successfully and securely stored");
+    } catch (error) {
+      console.error('Error saving Apify token:', error);
+      toast.error("Failed to save Apify token");
     }
   };
   
@@ -170,12 +210,12 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
         
-        {/* NEW: Apify API Configuration Card */}
+        {/* Updated Apify API Configuration Card */}
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Apify API Configuration</CardTitle>
             <CardDescription>
-              Configure your Apify API Token for web scraping capabilities.
+              Configure your Apify API Token for web scraping capabilities. Your token will be securely stored in the backend.
             </CardDescription>
           </CardHeader>
           
@@ -185,12 +225,13 @@ export default function SettingsPage() {
                 <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5" />
                 <div>
                   <p className="text-sm text-amber-800 dark:text-amber-400">
-                    An Apify API Token is required to use advanced web scraping features.
+                    An Apify API Token is required to use advanced web scraping features. Your token will be encrypted and stored securely.
                   </p>
                   <ol className="list-decimal list-inside text-xs text-amber-700 dark:text-amber-500 mt-2 space-y-1">
                     <li>Go to your <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener noreferrer" className="underline">Apify Account Integrations</a> page.</li>
                     <li>Copy your personal API token.</li>
                     <li>Paste it below and save.</li>
+                    <li>Note: You must be signed in to save your token securely.</li>
                   </ol>
                 </div>
               </div>
@@ -225,7 +266,7 @@ export default function SettingsPage() {
           
           <CardFooter>
             <Button onClick={handleSaveApifyToken} disabled={!apifyToken.trim()}>
-              Save Apify Token
+              Save Apify Token Securely
             </Button>
           </CardFooter>
         </Card>

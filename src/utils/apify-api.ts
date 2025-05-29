@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 // Using the website-content-crawler actor ID
 const WEBSITE_CONTENT_CRAWLER_ACTOR = 'apify~website-content-crawler';
@@ -80,6 +81,29 @@ interface ScrapedContentResult {
   error?: string;
 }
 
+// Helper function to call Apify via Edge Function
+async function callApifyViaEdgeFunction(actorId: string, input: any, endpoint: string = 'run-sync-get-dataset-items'): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.access_token) {
+    throw new Error('Please sign in to use Apify features');
+  }
+
+  const { data, error } = await supabase.functions.invoke('apify-proxy', {
+    body: {
+      actorId,
+      input,
+      endpoint
+    }
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to call Apify service');
+  }
+
+  return data;
+}
+
 function formatDatasetItemsToText(items: any[]): string {
   if (!items || items.length === 0) {
     return "No website content was found or crawled.";
@@ -116,16 +140,6 @@ export async function analyzeUrlWithApify(
   url: string, 
   options: ApifyCrawlingOptions = {} // Default empty options object
 ): Promise<ScrapedContentResult> {
-  const apifyToken = localStorage.getItem('apifyApiToken');
-
-  if (!apifyToken) {
-    toast.error("Apify API Token not found. Please set it in Settings.");
-    return { analyzedText: "", failedUrl: url, error: "Apify API Token not set." };
-  }
-
-  // Build the API URL for website-content-crawler
-  const apiUrl = `https://api.apify.com/v2/acts/${WEBSITE_CONTENT_CRAWLER_ACTOR}/run-sync-get-dataset-items?token=${apifyToken}`;
-
   // Set default options
   const defaultOptions = {
     maxCrawlDepth: 0, // Default to crawling only the provided URL (no links)
@@ -188,23 +202,7 @@ export async function analyzeUrlWithApify(
   console.log(`Sending request to Apify for URL: ${url} with input:`, input);
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      const errorMessage = errorData?.error?.message || errorData?.message || `HTTP error ${response.status}`;
-      console.error(`Failed to analyze URL ${url} with Apify:`, errorMessage, errorData);
-      toast.error(`Apify analysis failed for ${url}: ${errorMessage}`);
-      return { analyzedText: "", failedUrl: url, error: errorMessage };
-    }
-
-    const datasetItems = await response.json();
+    const datasetItems = await callApifyViaEdgeFunction(WEBSITE_CONTENT_CRAWLER_ACTOR, input);
     
     if (!Array.isArray(datasetItems)) {
       console.error(`Unexpected response format from Apify for ${url}:`, datasetItems);
@@ -296,58 +294,21 @@ function formatRssXmlScraperOutput(items: any[]): string {
 export async function scrapeRssFeedWithApify(
   input: RssXmlScraperInput
 ): Promise<ScrapedContentResult> {
-  const apifyToken = localStorage.getItem('apifyApiToken');
-
-  if (!apifyToken) {
-    toast.error("Apify API Token not found. Please set it in Settings.");
-    return { analyzedText: "", failedUrl: input.url, error: "Apify API Token not set." };
-  }
-
-  // Use CORS proxy for this endpoint
-  const originalApiUrl = `https://api.apify.com/v2/acts/${RSS_XML_SCRAPER_ACTOR}/runs?token=${apifyToken}`;
-  const proxiedApiUrl = `${CORS_PROXY}${encodeURIComponent(originalApiUrl)}`;
-
-  console.log(`Scraping RSS/XML feed with Apify (via CORS proxy) with input:`, input);
-
   try {
-    const response = await fetch(proxiedApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => response.statusText);
-      console.error(`RSS/XML feed scraping failed with Apify:`, errorText);
-      toast.error(`RSS/XML feed scraping failed: ${errorText}. Try using the Website Content Crawler for RSS feeds instead.`);
-      return { analyzedText: "", failedUrl: input.url, error: errorText };
-    }
-
-    const responseText = await response.text();
+    const result = await callApifyViaEdgeFunction(RSS_XML_SCRAPER_ACTOR, input, 'runs');
     
-    try {
-      const runData = JSON.parse(responseText);
-      
-      if (runData.data?.id) {
-        toast.info("RSS scraping initiated successfully via CORS proxy.");
-        return { analyzedText: "RSS scraping started successfully. Please check Apify dashboard for results or try using the Website Content Crawler with the RSS URL instead.", failedUrl: null };
-      } else {
-        console.error(`Unexpected response format from Apify for RSS/XML feed:`, runData);
-        toast.error(`Apify returned an unexpected format for RSS/XML feed.`);
-        return { analyzedText: "", failedUrl: input.url, error: "Unexpected response format from Apify."};
-      }
-    } catch (parseError) {
-      console.error(`Failed to parse response:`, parseError, responseText);
-      toast.error(`Failed to parse response from RSS scraper.`);
-      return { analyzedText: "", failedUrl: input.url, error: "Failed to parse response from RSS scraper."};
+    if (result?.data?.id) {
+      toast.info("RSS scraping initiated successfully.");
+      return { analyzedText: "RSS scraping started successfully. Results will be available in your Apify dashboard.", failedUrl: null };
+    } else {
+      console.error(`Unexpected response format from Apify for RSS/XML feed:`, result);
+      toast.error(`Apify returned an unexpected format for RSS/XML feed.`);
+      return { analyzedText: "", failedUrl: input.url, error: "Unexpected response format from Apify."};
     }
-
   } catch (error) {
     console.error(`Error during Apify RSS/XML feed scraping:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error during Apify RSS/XML feed scraping.";
-    toast.error(`Error with Apify RSS/XML feed scraping: ${errorMessage}. Try using Website Content Crawler instead.`);
+    toast.error(`Error with Apify RSS/XML feed scraping: ${errorMessage}`);
     return { analyzedText: "", failedUrl: input.url, error: errorMessage };
   }
 }
@@ -423,63 +384,19 @@ function formatBingSearchScraperOutput(items: any[]): string {
 export async function searchWithBingScraper(
   input: BingSearchScraperInput
 ): Promise<ScrapedContentResult> {
-  const apifyToken = localStorage.getItem('apifyApiToken');
-
-  if (!apifyToken) {
-    toast.error("Apify API Token not found. Please set it in Settings.");
-    const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
-    return { analyzedText: "", failedUrl: failedIdentifier, error: "Apify API Token not set." };
-  }
-
-  // Use CORS proxy for this endpoint
-  const originalApiUrl = `https://api.apify.com/v2/acts/${BING_SEARCH_SCRAPER_ACTOR}/runs?token=${apifyToken}`;
-  const proxiedApiUrl = `${CORS_PROXY}${encodeURIComponent(originalApiUrl)}`;
-  
-  const actorInput = {
-    ...input,
-    proxyConfiguration: input.proxyConfiguration || { useApifyProxy: true },
-  };
-
-  console.log(`Searching with Bing Scraper using Apify (via CORS proxy) with input:`, actorInput);
-
   try {
-    const response = await fetch(proxiedApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(actorInput),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => response.statusText);
-      const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
-      console.error(`Bing search failed with Apify:`, errorText);
-      toast.error(`Bing search failed: ${errorText}`);
-      return { analyzedText: "", failedUrl: failedIdentifier, error: errorText };
-    }
-
-    const responseText = await response.text();
+    const result = await callApifyViaEdgeFunction(BING_SEARCH_SCRAPER_ACTOR, input, 'runs');
     
-    try {
-      const runData = JSON.parse(responseText);
-      
-      if (runData.data?.id) {
-        toast.info("Bing search initiated successfully via CORS proxy.");
-        return { analyzedText: "Bing search started successfully. Please check Apify dashboard for results or try alternative search methods.", failedUrl: null };
-      } else {
-        const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
-        console.error(`Unexpected response format from Apify for Bing search:`, runData);
-        toast.error(`Apify returned an unexpected format for Bing search.`);
-        return { analyzedText: "", failedUrl: failedIdentifier, error: "Unexpected response format from Apify."};
-      }
-    } catch (parseError) {
-      const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
-      console.error(`Failed to parse response:`, parseError, responseText);
-      toast.error(`Failed to parse response from Bing search.`);
-      return { analyzedText: "", failedUrl: failedIdentifier, error: "Failed to parse response from Bing search."};
+    const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
+    
+    if (result?.data?.id) {
+      toast.info("Bing search initiated successfully.");
+      return { analyzedText: "Bing search started successfully. Results will be available in your Apify dashboard.", failedUrl: null };
+    } else {
+      console.error(`Unexpected response format from Apify for Bing search:`, result);
+      toast.error(`Apify returned an unexpected format for Bing search.`);
+      return { analyzedText: "", failedUrl: failedIdentifier, error: "Unexpected response format from Apify."};
     }
-
   } catch (error) {
     const failedIdentifier = typeof input.queries === 'string' ? input.queries : input.queries?.[0] || "Bing Search";
     console.error(`Error during Apify Bing search:`, error);
@@ -570,19 +487,6 @@ function formatArticleExtractorSmartOutput(items: any[]): string {
 export async function extractArticleWithApify(
   input: ArticleExtractorSmartInput
 ): Promise<ScrapedContentResult> {
-  const apifyToken = localStorage.getItem('apifyApiToken');
-
-  if (!apifyToken) {
-    toast.error("Apify API Token not found. Please set it in Settings.");
-    const url = input.startUrls?.[0]?.url || "Unknown URL";
-    return { analyzedText: "", failedUrl: url, error: "Apify API Token not set." };
-  }
-
-  // Use CORS proxy for this endpoint
-  const originalApiUrl = `https://api.apify.com/v2/acts/${ARTICLE_EXTRACTOR_SMART_ACTOR}/runs?token=${apifyToken}`;
-  const proxiedApiUrl = `${CORS_PROXY}${encodeURIComponent(originalApiUrl)}`;
-
-  // Ensure proxy is enabled by default if not specified, but allow full override
   const finalProxyConfig = input.proxyConfiguration === undefined 
     ? { useApifyProxy: true } 
     : input.proxyConfiguration;
@@ -593,47 +497,22 @@ export async function extractArticleWithApify(
   };
 
   const url = input.startUrls?.[0]?.url || "Unknown URL";
-  console.log(`Extracting article with Apify (via CORS proxy) for URL: ${url} with input:`, actorInput);
 
   try {
-    const response = await fetch(proxiedApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(actorInput),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => response.statusText);
-      console.error(`Failed to extract article from ${url} with Apify:`, errorText);
-      toast.error(`Article extraction failed for ${url}: ${errorText}. Try using Website Content Crawler instead.`);
-      return { analyzedText: "", failedUrl: url, error: errorText };
-    }
-
-    const responseText = await response.text();
+    const result = await callApifyViaEdgeFunction(ARTICLE_EXTRACTOR_SMART_ACTOR, actorInput, 'runs');
     
-    try {
-      const runData = JSON.parse(responseText);
-      
-      if (runData.data?.id) {
-        toast.info("Article extraction initiated successfully via CORS proxy.");
-        return { analyzedText: "Article extraction started successfully. Please try using the Website Content Crawler with this URL instead for immediate results.", failedUrl: null };
-      } else {
-        console.error(`Unexpected response format from Apify for ${url}:`, runData);
-        toast.error(`Apify returned an unexpected format for ${url}.`);
-        return { analyzedText: "", failedUrl: url, error: "Unexpected response format from Apify."};
-      }
-    } catch (parseError) {
-      console.error(`Failed to parse response:`, parseError, responseText);
-      toast.error(`Failed to parse response from article extractor.`);
-      return { analyzedText: "", failedUrl: url, error: "Failed to parse response from article extractor."};
+    if (result?.data?.id) {
+      toast.info("Article extraction initiated successfully.");
+      return { analyzedText: "Article extraction started successfully. Results will be available in your Apify dashboard.", failedUrl: null };
+    } else {
+      console.error(`Unexpected response format from Apify for ${url}:`, result);
+      toast.error(`Apify returned an unexpected format for ${url}.`);
+      return { analyzedText: "", failedUrl: url, error: "Unexpected response format from Apify."};
     }
-
   } catch (error) {
     console.error(`Error during Apify article extraction for ${url}:`, error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error during Apify article extraction.";
-    toast.error(`Error extracting article from ${url}: ${errorMessage}. Try using Website Content Crawler instead.`);
+    toast.error(`Error extracting article from ${url}: ${errorMessage}`);
     return { analyzedText: "", failedUrl: url, error: errorMessage };
   }
 }
