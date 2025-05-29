@@ -6,10 +6,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { X, Save, Trash2 } from 'lucide-react'; // Added Save and Trash2 icons
-import { CrawlingOptions } from './CrawlingOptions';
-import { ApifyCrawlingOptions } from '@/utils/apify-api';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Added Select
+import { X, Save, Trash2 } from 'lucide-react';
+import { ApifyCrawlingOptions, ArticleExtractorSmartInput, BingSearchScraperInput, RssXmlScraperInput } from '@/utils/apify-api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+// Import the options components
+import { WebsiteCrawlerOptions } from './WebsiteCrawlerOptions'; // Renamed from CrawlingOptions
+import { ArticleExtractorOptions } from './ArticleExtractorOptions';
+import { BingSearchOptions } from './BingSearchOptions';
+import { RssScraperOptions } from './RssScraperOptions';
 
 interface TextUrlInputProps {
   pastedText: string;
@@ -22,8 +27,6 @@ interface TextUrlInputProps {
   onClearUrls: () => void;
   currentUrlInput: string;
   onCurrentUrlInputChange: (url: string) => void;
-  crawlingOptions: ApifyCrawlingOptions;
-  onCrawlingOptionsChange: (options: ApifyCrawlingOptions) => void;
   
   onClearPastedText: () => void;
 
@@ -42,6 +45,15 @@ interface TextUrlInputProps {
   onBingSearchQueryChange: (query: string) => void;
   rssFeedUrl: string;
   onRssFeedUrlChange: (url: string) => void;
+
+  // Options Management
+  currentActorOptions: any; // This will be one of ApifyCrawlingOptions, Partial<ArticleExtractorSmartInput>, etc.
+  onActorOptionChange: (optionName: string, value: any) => void; // Generic handler from DriveAnalyzer
+
+  // This specific prop is for WebsiteCrawlerOptions, which still uses the old handler structure from useAnalysisState
+  // It can be phased out if WebsiteCrawlerOptions is refactored to use onActorOptionChange directly.
+  crawlingOptions: ApifyCrawlingOptions; // Still needed for WebsiteCrawlerOptions
+  onCrawlingOptionsChange: (options: Partial<ApifyCrawlingOptions>) => void; // Still needed for WebsiteCrawlerOptions
 }
 
 export function TextUrlInput({
@@ -54,9 +66,6 @@ export function TextUrlInput({
   onClearUrls,
   currentUrlInput,
   onCurrentUrlInputChange,
-  crawlingOptions,
-  onCrawlingOptionsChange,
-  // Apify Actor Props
   selectedActor,
   onSelectedActorChange,
   actorWebsiteCrawler,
@@ -69,9 +78,13 @@ export function TextUrlInput({
   onBingSearchQueryChange,
   rssFeedUrl,
   onRssFeedUrlChange,
+  currentActorOptions,
+  onActorOptionChange,
+  crawlingOptions, // Retained for WebsiteCrawlerOptions
+  onCrawlingOptionsChange, // Retained for WebsiteCrawlerOptions
 }: TextUrlInputProps) {
-  const SAVED_URLS_STORAGE_KEY = 'driveAnalyzer_savedUrls'; // This might need to be actor-specific if we save different types of inputs
-  const [savedUrls, setSavedUrls] = useState<string[]>([]); // Consider if this should be generalized or actor-specific
+  const SAVED_URLS_STORAGE_KEY = 'driveAnalyzer_savedUrls';
+  const [savedUrls, setSavedUrls] = useState<string[]>([]);
 
   // Load saved URLs from localStorage on mount
   useEffect(() => {
@@ -254,64 +267,77 @@ export function TextUrlInput({
               </Button>
             </div>
           )}
+          {/* Render WebsiteCrawlerOptions (previously CrawlingOptions) */}
           {urls.length > 0 && (
-            <CrawlingOptions 
-              options={crawlingOptions} 
-              onChange={onCrawlingOptionsChange}
+            <WebsiteCrawlerOptions 
+              options={crawlingOptions as ApifyCrawlingOptions} // Ensure it gets the correct options type
+              onChange={onCrawlingOptionsChange} // Uses the old specific handler
             />
           )}
         </div>
       )}
 
-      {/* Article Extractor Input */}
+      {/* Article Extractor Input & Options */}
       {selectedActor === actorArticleExtractor && (
-        <div className="space-y-2 mt-4 border-t pt-4">
-          <Label htmlFor="article-url-input" className="text-sm md:text-base">Article URL</Label>
-          <Input
-            id="article-url-input"
-            type="url"
-            placeholder="https://example.com/article-page"
-            value={articleExtractorUrl}
-            onChange={(e) => onArticleExtractorUrlChange(e.target.value)}
-            className="text-sm md:text-base"
+        <>
+          <div className="space-y-2 mt-4 border-t pt-4">
+            <Label htmlFor="article-url-input" className="text-sm md:text-base">Article URL</Label>
+            <Input
+              id="article-url-input"
+              type="url"
+              placeholder="https://example.com/article-page"
+              value={articleExtractorUrl}
+              onChange={(e) => onArticleExtractorUrlChange(e.target.value)}
+              className="text-sm md:text-base"
+            />
+          </div>
+          <ArticleExtractorOptions
+            options={currentActorOptions as Partial<ArticleExtractorSmartInput>}
+            onOptionChange={onActorOptionChange}
           />
-          {/* TODO: Consider if save/load functionality is needed for this URL type too */}
-        </div>
+        </>
       )}
 
-      {/* Bing Search Scraper Input */}
+      {/* Bing Search Scraper Input & Options */}
       {selectedActor === actorBingSearch && (
-        <div className="space-y-2 mt-4 border-t pt-4">
-          <Label htmlFor="bing-query-input" className="text-sm md:text-base">Bing Search Query</Label>
-          <Input
-            id="bing-query-input"
-            type="text"
-            placeholder="Enter your search query/queries..."
-            value={bingSearchQuery}
-            onChange={(e) => onBingSearchQueryChange(e.target.value)}
-            className="text-sm md:text-base"
+        <>
+          <div className="space-y-2 mt-4 border-t pt-4">
+            <Label htmlFor="bing-query-input" className="text-sm md:text-base">Bing Search Query</Label>
+            <Input
+              id="bing-query-input"
+              type="text"
+              placeholder="Enter your search query/queries..."
+              value={bingSearchQuery}
+              onChange={(e) => onBingSearchQueryChange(e.target.value)}
+              className="text-sm md:text-base"
+            />
+          </div>
+          <BingSearchOptions
+            options={currentActorOptions as Partial<BingSearchScraperInput>}
+            onOptionChange={onActorOptionChange}
           />
-          {/* TODO: Add inputs for other Bing options like country, numresults if needed */}
-          {/* Example:
-          <Input type="text" placeholder="Country (e.g., US)" value={bingSearchOptions.country || ''} onChange={e => setBingSearchOptions(prev => ({...prev, country: e.target.value}))} /> 
-          */}
-        </div>
+        </>
       )}
 
-      {/* RSS/XML Feed Scraper Input */}
+      {/* RSS/XML Feed Scraper Input & Options */}
       {selectedActor === actorRssScraper && (
-        <div className="space-y-2 mt-4 border-t pt-4">
-          <Label htmlFor="rss-url-input" className="text-sm md:text-base">RSS Feed URL</Label>
-          <Input
-            id="rss-url-input"
-            type="url"
-            placeholder="https://example.com/feed.xml"
-            value={rssFeedUrl}
-            onChange={(e) => onRssFeedUrlChange(e.target.value)}
-            className="text-sm md:text-base"
+        <>
+          <div className="space-y-2 mt-4 border-t pt-4">
+            <Label htmlFor="rss-url-input" className="text-sm md:text-base">RSS Feed URL</Label>
+            <Input
+              id="rss-url-input"
+              type="url"
+              placeholder="https://example.com/feed.xml"
+              value={rssFeedUrl}
+              onChange={(e) => onRssFeedUrlChange(e.target.value)}
+              className="text-sm md:text-base"
+            />
+          </div>
+          <RssScraperOptions
+            options={currentActorOptions as Partial<RssXmlScraperInput>}
+            onOptionChange={onActorOptionChange}
           />
-          {/* TODO: Consider if multiple RSS URLs or other options are needed */}
-        </div>
+        </>
       )}
     </div>
   );

@@ -41,32 +41,40 @@ interface WebsiteCrawlerInput {
 // Interface for lukaskrivka/article-extractor-smart input
 export interface ArticleExtractorSmartInput {
   url: string;
+  mustHaveDate?: boolean;
+  minWords?: number;
   proxyConfiguration?: {
     useApifyProxy?: boolean;
+    // Actor docs mention groups like RESIDENTIAL, DATACENTER - could be string[]
+    // country?: string - for proxy country
   };
-  // Add other specific options for article-extractor-smart if needed
+  // saveHtml?: boolean; // Decided to omit for now as we primarily use text/markdown
 }
 
 // Interface for tri_angle/bing-search-scraper input
 export interface BingSearchScraperInput {
-  searchqueries: string | string[]; // Can be a single query or an array of queries
-  keywords?: string[]; // Deprecated, use searchqueries instead
-  country?: string; // e.g., "US", "GB", "DE"
-  maxdepth?: number; // Max number of pages to scrape
-  numresults?: number; // Number of results per page
+  searchqueries: string | string[];
+  country?: string; // For filtering search results by country, e.g. "US", "GB". Actor calls it "country"
+  marketCode?: string; // For UI, if we want to be more specific like "en-US". Actor might just use 'country'. Let's use 'country' for simplicity matching actor.
+  languageCode?: string; // E.g., "en", "es"
+  maxPagesPerQuery?: number; // Max number of pages to scrape per query
+  resultsPerPage?: number; // Number of results per page
   timerange?: string; // e.g., "Last 24 hours", "Last week", "Last month", "Last year"
   proxyConfiguration?: {
     useApifyProxy?: boolean;
   };
-  // Add other specific options for bing-search-scraper if needed
 }
 
 // Interface for jupri/rss-xml-scraper input
 export interface RssXmlScraperInput {
   rssUrls: string[];
-  xmlUrls?: string[]; // Optional, if you have direct XML feed URLs
-  maxItems?: number; // Max number of items to scrape from each feed
-  // Add other specific options for rss-xml-scraper if needed
+  xmlUrls?: string[];
+  maxItems?: number;
+  handleFromAtom?: boolean; // Atom feed specific handling
+  handleFromRdf?: boolean;  // RDF feed specific handling
+  xmlToJson?: boolean;      // Convert XML to JSON (might be useful for debugging, but maybe not for direct LLM input)
+  // header?: Record<string, string>; // Keeping it simple for now
+  // dev_no_strip?: boolean;        // Keeping it simple for now
 }
 
 interface ScrapedContentResult {
@@ -573,10 +581,14 @@ export async function extractArticleWithApify(
 
   const apiUrl = `https://api.apify.com/v2/acts/${ARTICLE_EXTRACTOR_SMART_ACTOR}/run-sync-get-dataset-items?token=${apifyToken}`;
 
-  // Ensure proxy is enabled by default if not specified
+  // Ensure proxy is enabled by default if not specified, but allow full override
+  const finalProxyConfig = input.proxyConfiguration === undefined 
+    ? { useApifyProxy: true } 
+    : input.proxyConfiguration;
+
   const actorInput = {
     ...input,
-    proxyConfiguration: input.proxyConfiguration || { useApifyProxy: true },
+    proxyConfiguration: finalProxyConfig,
   };
 
   console.log(`Extracting article with Apify for URL: ${input.url} with input:`, actorInput);
