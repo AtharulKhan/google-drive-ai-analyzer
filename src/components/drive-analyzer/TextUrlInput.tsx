@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, Plus, X } from 'lucide-react';
 import { ApifyCrawlingOptions, ArticleExtractorSmartInput, BingSearchScraperInput, RssXmlScraperInput } from '@/utils/apify-api';
-import { WebsiteCrawlerOptions } from './WebsiteCrawlerOptions';
+import { CrawlingOptions } from './WebsiteCrawlerOptions';
 import { ArticleExtractorOptions } from './ArticleExtractorOptions';
 import { BingSearchOptions } from './BingSearchOptions';
 import { RssScraperOptions } from './RssScraperOptions';
@@ -119,7 +119,7 @@ export function TextUrlInput({
                 </div>
               </div>
             )}
-            <WebsiteCrawlerOptions 
+            <CrawlingOptions 
               options={crawlingOptions} 
               onChange={onCrawlingOptionsChange} 
             />
