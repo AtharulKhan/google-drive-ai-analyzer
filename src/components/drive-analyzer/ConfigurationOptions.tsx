@@ -24,6 +24,8 @@ interface ConfigurationOptionsProps {
   maxDocChars: number;
   customInstructions: string;
   setCustomInstructions: (value: string) => void;
+  webhookUrl: string;
+  handleWebhookUrlChange: (value: string) => void;
 }
 
 export function ConfigurationOptions({
@@ -35,7 +37,9 @@ export function ConfigurationOptions({
   setIncludeSubfolders,
   maxDocChars,
   customInstructions,
-  setCustomInstructions
+  setCustomInstructions,
+  webhookUrl,
+  handleWebhookUrlChange,
 }: ConfigurationOptionsProps) {
   // Load the preferred model from localStorage on component mount
   useEffect(() => {
@@ -64,6 +68,17 @@ export function ConfigurationOptions({
         />
       </div>
       
+      <div>
+        <Label htmlFor="webhookUrl">Webhook URL (Optional, Saved Automatically)</Label>
+        <Input
+          id="webhookUrl"
+          type="url"
+          value={webhookUrl}
+          onChange={(e) => handleWebhookUrlChange(e.target.value)}
+          placeholder="Enter a URL to send analysis results (e.g., https://api.example.com/webhook)"
+        />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="model">AI Model</Label>

@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Markdown } from '@/components/ui/markdown'; // Using the existing Markdown component
 import { toast } from 'sonner';
-import { Copy } from 'lucide-react';
+import { Copy, Download } from 'lucide-react'; // Import Download icon
 
 // Conceptual - for prop definition, will be moved to a shared types file later
 export interface SavedAnalysisSource {
@@ -25,6 +25,19 @@ export interface SavedAnalysis {
 
 interface SavedAnalysisDetailViewProps {
   analysis: SavedAnalysis | null;
+}
+
+// Helper function to trigger download (can be moved to a utils file if used elsewhere)
+function downloadJson(data: object, filename: string) {
+  const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+    JSON.stringify(data, null, 2)
+  )}`;
+  const link = document.createElement("a");
+  link.href = jsonString;
+  link.download = filename;
+  document.body.appendChild(link); // Required for Firefox
+  link.click();
+  document.body.removeChild(link); // Clean up
 }
 
 export function SavedAnalysisDetailView({ analysis }: SavedAnalysisDetailViewProps) {
@@ -78,10 +91,20 @@ export function SavedAnalysisDetailView({ analysis }: SavedAnalysisDetailViewPro
       <div>
         <div className="flex justify-between items-center mb-1.5">
           <Label htmlFor={`aiOutputDetail-${analysis.id}`} className="text-sm font-medium">AI Output:</Label>
-          <Button variant="ghost" size="sm" onClick={handleCopyOutput}>
-            <Copy className="mr-1.5 h-3.5 w-3.5" />
-            Copy Output
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="ghost" size="sm" onClick={handleCopyOutput}>
+              <Copy className="mr-1.5 h-3.5 w-3.5" />
+              Copy Output
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => {
+              const titleForFile = analysis.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+              downloadJson(analysis, `analysis-${titleForFile || analysis.id}.json`);
+              toast.success("Downloaded analysis as JSON");
+            }}>
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Download JSON
+            </Button>
+          </div>
         </div>
         <ScrollArea className="h-72 mt-1 rounded-md border p-3">
           <div id={`aiOutputDetail-${analysis.id}`}>

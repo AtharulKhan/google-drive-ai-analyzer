@@ -9,6 +9,7 @@ import { SavedAnalysisSource } from '@/components/drive-analyzer/SavedAnalysisDe
 export const SAVED_PROMPTS_KEY = "drive-analyzer-saved-prompts";
 export const CUSTOM_INSTRUCTIONS_KEY = "drive-analyzer-custom-instructions";
 export const SAVED_ANALYSES_KEY = "drive-analyzer-saved-analyses";
+export const WEBHOOK_URL_KEY = "drive-analyzer-webhook-url";
 
 export interface SavedPrompt {
   id: string;
@@ -43,6 +44,7 @@ export default function useAnalysisState() {
   const [pastedText, setPastedText] = useState<string>("");
   const [currentUrlInput, setCurrentUrlInput] = useState<string>("");
   const [urls, setUrls] = useState<string[]>([]);
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
   
   // Crawling options
   const [crawlingOptions, setCrawlingOptions] = useState<ApifyCrawlingOptions>({
@@ -81,7 +83,21 @@ export default function useAnalysisState() {
     if (loadedAnalyses) {
       setSavedAnalyses(JSON.parse(loadedAnalyses));
     }
+
+    const loadedWebhookUrl = localStorage.getItem(WEBHOOK_URL_KEY);
+    if (loadedWebhookUrl) {
+      setWebhookUrl(loadedWebhookUrl);
+    }
   }, []);
+
+  // Save webhookUrl to localStorage when it changes
+  useEffect(() => {
+    if (webhookUrl) {
+      localStorage.setItem(WEBHOOK_URL_KEY, webhookUrl);
+    } else {
+      localStorage.removeItem(WEBHOOK_URL_KEY); // Clear if empty
+    }
+  }, [webhookUrl]);
   
   // When selected files change, update display files
   useEffect(() => {
@@ -123,6 +139,11 @@ export default function useAnalysisState() {
   
   const handleClearUrls = useCallback(() => {
     setUrls([]);
+  }, []);
+
+  // Handle webhook URL change
+  const handleWebhookUrlChange = useCallback((url: string) => {
+    setWebhookUrl(url);
   }, []);
 
   // Handle crawling options
@@ -201,6 +222,24 @@ export default function useAnalysisState() {
     );
   }, []);
 
+  const handleImportAnalysis = useCallback((analysisToImport: SavedAnalysis): { success: boolean; message: string } => {
+    if (savedAnalyses.some(analysis => analysis.id === analysisToImport.id)) {
+      const message = `Analysis with ID "${analysisToImport.id}" already exists.`;
+      toast.warning(message);
+      return { success: false, message };
+    }
+
+    setSavedAnalyses(prevAnalyses => {
+      const updatedAnalyses = [analysisToImport, ...prevAnalyses];
+      localStorage.setItem(SAVED_ANALYSES_KEY, JSON.stringify(updatedAnalyses));
+      return updatedAnalyses;
+    });
+
+    const message = `Analysis "${analysisToImport.title}" imported successfully.`;
+    toast.success(message);
+    return { success: true, message };
+  }, [savedAnalyses]);
+
   return {
     // Files
     selectedFiles,
@@ -222,6 +261,8 @@ export default function useAnalysisState() {
     handleAddUrl,
     handleRemoveUrl,
     handleClearUrls,
+    webhookUrl,
+    handleWebhookUrlChange,
     
     // Crawling options
     crawlingOptions,
@@ -249,5 +290,6 @@ export default function useAnalysisState() {
     handleDeleteAllAnalyses,
     selectedAnalysisIdsForPrompt,
     toggleAnalysisSelectionForPrompt,
+    handleImportAnalysis, // Export the new handler
   };
 }

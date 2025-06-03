@@ -24,9 +24,11 @@ import useAnalysisState, {
   CUSTOM_INSTRUCTIONS_KEY,
   SAVED_PROMPTS_KEY,
   SavedPrompt,
-  SavedAnalysis
+  SavedAnalysis,
+  // WEBHOOK_URL_KEY, // Not strictly needed for import, but good for context
 } from "@/hooks/useAnalysisState";
 import { processLocalFiles } from "@/utils/local-file-processor";
+import { sendToWebhook } from "@/utils/webhook-sender"; // Import the new webhook sender
 import {
   Dialog,
   DialogContent,
@@ -77,6 +79,8 @@ export default function DriveAnalyzer() {
     // Crawling options
     crawlingOptions,
     handleCrawlingOptionsChange,
+    webhookUrl, // <<< Add this
+    handleWebhookUrlChange, // <<< Add this
     
     // Analysis state
     userPrompt,
@@ -98,6 +102,7 @@ export default function DriveAnalyzer() {
     handleDeleteAllAnalyses,
     selectedAnalysisIdsForPrompt,
     toggleAnalysisSelectionForPrompt,
+    handleImportAnalysis, // Destructure the new handler
   } = useAnalysisState();
 
   // Local state
@@ -115,6 +120,7 @@ export default function DriveAnalyzer() {
   const [viewingAnalysis, setViewingAnalysis] = useState<SavedAnalysis | null>(null);
   const [isSavedAnalysesOpen, setIsSavedAnalysesOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [currentAnalysisResultForDownload, setCurrentAnalysisResultForDownload] = useState<SavedAnalysis | null>(null);
 
   // Hooks
   const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
@@ -170,6 +176,17 @@ export default function DriveAnalyzer() {
     });
   }, [isReady, openPicker, handleAddFiles]);
 
+  // Clear currentAnalysisResultForDownload when relevant sources are cleared via useAnalysisState's handleClear functions
+  useEffect(() => {
+    if (selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && aiOutput === "") {
+      setCurrentAnalysisResultForDownload(null);
+    }
+  // Adding aiOutput here because clearing files/text/urls doesn't necessarily mean we want to clear a *completed* analysis output for download
+  // However, if aiOutput itself is cleared (e.g. new analysis starts), then it should be cleared.
+  // A more direct way is to clear it when handleClearAll or specific clear functions in useAnalysisState are called,
+  // but this useEffect provides a safety net. The primary reset point is at the start of handleRunAnalysis.
+  }, [selectedFiles, localFiles, pastedText, urls, aiOutput]);
+
   // Load custom instructions for unified view
   const customInstructionsForUnifiedView = React.useMemo(() => {
     return localStorage.getItem('drive-analyzer-custom-instructions') || '';
@@ -204,6 +221,7 @@ export default function DriveAnalyzer() {
 
     setAiOutput("");
     setActiveTab("result");
+    setCurrentAnalysisResultForDownload(null); // Reset on new analysis run
 
     try {
       const allContentSources: string[] = [];
@@ -372,6 +390,23 @@ export default function DriveAnalyzer() {
       };
 
       handleSaveAnalysis(newAnalysis);
+      setCurrentAnalysisResultForDownload(newAnalysis); // Store for download
+
+      // Send to webhook if URL is configured
+      if (webhookUrl && (webhookUrl.startsWith('http://') || webhookUrl.startsWith('https://'))) {
+        toast.promise(sendToWebhook(webhookUrl, newAnalysis), {
+          loading: "Sending analysis to webhook...",
+          success: (result) => {
+            if (result.success) {
+              return `Webhook sent successfully to ${webhookUrl}`;
+            } else {
+              // This case implies sendToWebhook resolved with { success: false }
+              throw new Error(result.error || "Unknown webhook error");
+            }
+          },
+          error: (err) => `Failed to send webhook to ${webhookUrl}: ${err.message}`,
+        });
+      }
       
       if (selectedAnalysisIdsForPrompt.length > 0) {
         selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id)); // This will clear the array
@@ -401,7 +436,25 @@ export default function DriveAnalyzer() {
         processedFiles: 0,
       });
     }
-  }, [accessToken, selectedFiles, userPrompt, customInstructions, aiModel, urls, pastedText, crawlingOptions, handleSaveAnalysis, localFiles]);
+  }, [
+    accessToken,
+    selectedFiles,
+    userPrompt,
+    customInstructions,
+    aiModel,
+    urls,
+    pastedText,
+    crawlingOptions,
+    handleSaveAnalysis,
+    localFiles,
+    webhookUrl, // <<< Add to dependency array
+    savedAnalyses, // Already present implicitly, but good to be explicit if logic depends on it for webhook
+    selectedAnalysisIdsForPrompt, // Already present
+    toggleAnalysisSelectionForPrompt, // Already present
+    setAiOutput, // Already present
+    setProcessingStatus, // Already present
+    setActiveTab, // Already present
+  ]);
 
   // Handle saving a new prompt
   const handleSavePrompt = useCallback(() => {
@@ -657,6 +710,8 @@ export default function DriveAnalyzer() {
                     maxDocChars={MAX_DOC_CHARS}
                     customInstructions={customInstructions}
                     setCustomInstructions={setCustomInstructions}
+                    webhookUrl={webhookUrl} // <<< Pass prop
+                    handleWebhookUrlChange={handleWebhookUrlChange} // <<< Pass prop
                   />
                 </div>
                 
@@ -692,6 +747,7 @@ export default function DriveAnalyzer() {
               <AnalysisResults 
                 processingStatus={processingStatus}
                 aiOutput={aiOutput}
+                currentAnalysisResult={currentAnalysisResultForDownload} // Pass for download
               />
             </TabsContent>
           </Tabs>
@@ -733,6 +789,7 @@ export default function DriveAnalyzer() {
         onDeleteAllAnalyses={handleDeleteAllAnalyses}
         selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
         toggleAnalysisSelectionForPrompt={toggleAnalysisSelectionForPrompt}
+        onImportAnalysis={handleImportAnalysis} // Pass as prop
       />
 
       {viewingAnalysis && (
