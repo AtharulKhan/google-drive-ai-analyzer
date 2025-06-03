@@ -1,0 +1,24 @@
+{
+  "name": "webhook-server",
+  "version": "1.0.0",
+  "description": "Webhook server for handling callbacks",
+  "main": "dist/app.js",
+  "scripts": {
+    "start": "node dist/app.js",
+    "build": "tsc",
+    "dev": "nodemon src/app.ts"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "body-parser": "^1.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/node": "^16.11.7",
+    "nodemon": "^2.0.15",
+    "typescript": "^4.4.4",
+    "ts-node": "^10.4.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
