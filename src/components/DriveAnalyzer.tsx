@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -124,21 +125,6 @@ export default function DriveAnalyzer() {
   // Hooks
   const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
   const { openPicker, isReady } = useDrivePicker({ accessToken });
-
-  // Load custom instructions from localStorage
-  useEffect(() => {
-    const savedInstructions = localStorage.getItem(CUSTOM_INSTRUCTIONS_KEY);
-    if (savedInstructions) {
-      setCustomInstructions(savedInstructions);
-    }
-  }, []);
-  
-  // Save custom instructions to localStorage when changed
-  useEffect(() => {
-    if (customInstructions !== undefined) {
-      localStorage.setItem(CUSTOM_INSTRUCTIONS_KEY, customInstructions);
-    }
-  }, [customInstructions]);
 
   // Handle local file selection
   const handleLocalFilesSelected = useCallback((files: File[]) => {

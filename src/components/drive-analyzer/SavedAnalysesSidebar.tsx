@@ -24,7 +24,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit2, Trash2, Eye, XCircle, Upload } from 'lucide-react'; // Import Upload icon
+import { Edit2, Trash2, Eye, XCircle, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Conceptual - for prop definition, will be moved to a shared types file later
 export interface SavedAnalysisSource {
@@ -159,7 +160,7 @@ export function SavedAnalysesSidebar({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    input.onchange = handleFileImport;
+    input.addEventListener('change', handleFileImport); // Fix event handler type
     input.click();
   };
 
@@ -298,7 +299,7 @@ export function SavedAnalysesSidebar({
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete all your saved analyses.
             </AlertDialogDescription>
-          </AlertDialogHeader>
+          </AlertDialogFooter>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsDeleteAllDialogOpen(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteAll}>Delete All</AlertDialogAction>
