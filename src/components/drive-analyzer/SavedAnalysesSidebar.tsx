@@ -112,8 +112,9 @@ export function SavedAnalysesSidebar({
     setIsDeleteAllDialogOpen(false);
   };
 
-  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileImport = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
     if (!file) {
       return;
     }
@@ -138,7 +139,7 @@ export function SavedAnalysesSidebar({
           typeof parsedData.aiOutput === 'string' &&
           Array.isArray(parsedData.sources)
         ) {
-          onImportAnalysis(parsedData); // Toast notifications are handled by onImportAnalysis
+          onImportAnalysis(parsedData);
         } else {
           toast.error('Invalid JSON structure for SavedAnalysis.');
         }
@@ -153,14 +154,14 @@ export function SavedAnalysesSidebar({
     reader.readAsText(file);
 
     // Reset file input value to allow importing the same file again if needed
-    event.target.value = '';
+    target.value = '';
   };
 
   const triggerFileInput = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    input.addEventListener('change', handleFileImport); // Fix event handler type
+    input.addEventListener('change', handleFileImport);
     input.click();
   };
 
