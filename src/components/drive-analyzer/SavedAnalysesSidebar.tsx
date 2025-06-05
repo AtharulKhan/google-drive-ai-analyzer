@@ -178,13 +178,13 @@ export function SavedAnalysesSidebar({
           <SheetDescription>View, rename, delete, or import your past AI analyses.</SheetDescription>
         </SheetHeader>
 
-        <div className="px-0 py-2 border-b"> {/* Added border-b for visual separation */}
+        <div className="px-0 py-2 border-b">
           <Button variant="outline" className="w-full" onClick={triggerFileInput}>
             <Upload className="mr-2 h-4 w-4" /> Import from JSON
           </Button>
         </div>
 
-        <ScrollArea className="flex-grow h-[calc(100vh-260px)] pr-1"> {/* Adjusted height due to import button */}
+        <ScrollArea className="flex-grow h-[calc(100vh-260px)] pr-1">
           {savedAnalyses.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">No analyses saved yet.</p>
@@ -299,7 +299,7 @@ export function SavedAnalysesSidebar({
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete all your saved analyses.
             </AlertDialogDescription>
-          </AlertDialogFooter>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsDeleteAllDialogOpen(false)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteAll}>Delete All</AlertDialogAction>
