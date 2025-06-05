@@ -11,7 +11,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { AI_MODELS, getDefaultAIModel, savePreferredAIModel } from "@/utils/ai-models";
 
 interface ConfigurationOptionsProps {
@@ -22,8 +21,6 @@ interface ConfigurationOptionsProps {
   includeSubfolders: boolean;
   setIncludeSubfolders: (value: boolean) => void;
   maxDocChars: number;
-  customInstructions: string;
-  setCustomInstructions: (value: string) => void;
   webhookUrl: string;
   handleWebhookUrlChange: (value: string) => void;
 }
@@ -36,8 +33,6 @@ export function ConfigurationOptions({
   includeSubfolders,
   setIncludeSubfolders,
   maxDocChars,
-  customInstructions,
-  setCustomInstructions,
   webhookUrl,
   handleWebhookUrlChange,
 }: ConfigurationOptionsProps) {
@@ -56,18 +51,6 @@ export function ConfigurationOptions({
   
   return (
     <div className="grid gap-4">
-      <div>
-        <Label htmlFor="customInstructions">Custom Instructions (Saved Automatically)</Label>
-        <Textarea
-          id="customInstructions"
-          value={customInstructions}
-          onChange={(e) => setCustomInstructions(e.target.value)}
-          placeholder="Add custom instructions that will be included with every prompt. These will be saved for future sessions."
-          rows={2}
-          className="resize-none"
-        />
-      </div>
-      
       <div>
         <Label htmlFor="webhookUrl">Webhook URL (Optional, Saved Automatically)</Label>
         <Input

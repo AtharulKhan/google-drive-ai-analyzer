@@ -2,7 +2,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Maximize2 } from "lucide-react";
 import { SavedPrompt } from "./SavedPrompts";
 import { searchTemplates, Template } from "@/data/templates";
 
@@ -26,6 +29,15 @@ export function PromptSelector({
   const [isTemplateCommandOpen, setIsTemplateCommandOpen] = useState(false);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [isPromptDialogOpen, setIsPromptDialogOpen] = useState(false);
+  const [expandedPrompt, setExpandedPrompt] = useState("");
+
+  // Initialize expanded prompt when dialog opens
+  useEffect(() => {
+    if (isPromptDialogOpen) {
+      setExpandedPrompt(userPrompt);
+    }
+  }, [isPromptDialogOpen, userPrompt]);
 
   // Handle template command detection
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -46,6 +58,17 @@ export function PromptSelector({
     }
     
     onUserPromptChange(e);
+  };
+
+  const handleExpandedPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setExpandedPrompt(newValue);
+    
+    // Create synthetic event to update main prompt
+    const syntheticEvent = {
+      target: { value: newValue }
+    } as React.ChangeEvent<HTMLTextAreaElement>;
+    onUserPromptChange(syntheticEvent);
   };
 
   const handleTemplateSelect = (template: Template) => {
@@ -90,7 +113,34 @@ export function PromptSelector({
 
   return (
     <div className="relative">
-      <Label htmlFor="prompt">Prompt (Instructions for AI)</Label>
+      <div className="flex items-center justify-between mb-2">
+        <Label htmlFor="prompt">Prompt (Instructions for AI)</Label>
+        <Dialog open={isPromptDialogOpen} onOpenChange={setIsPromptDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Maximize2 className="h-4 w-4 mr-2" />
+              Expand
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Prompt (Instructions for AI) - Full Screen Editor</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 space-y-4">
+              <Textarea
+                value={expandedPrompt}
+                onChange={handleExpandedPromptChange}
+                placeholder="What would you like the AI to do with the selected documents? Type '!' to insert templates or '@' for saved prompts."
+                className="resize-none h-[60vh]"
+              />
+              <p className="text-sm text-muted-foreground">
+                Type '!' to insert templates or '@' for saved prompts. Changes are synced with the main prompt field.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+      
       <Textarea
         id="prompt"
         value={userPrompt}

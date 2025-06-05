@@ -113,7 +113,6 @@ export default function DriveAnalyzer() {
   const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
   const [maxFiles, setMaxFiles] = useState<number>(DEFAULT_MAX_FILES);
   const [includeSubfolders, setIncludeSubfolders] = useState(true);
-  const [customInstructions, setCustomInstructions] = useState<string>("");
   const [newPromptTitle, setNewPromptTitle] = useState("");
   const [newPromptContent, setNewPromptContent] = useState("");
   const [isPromptCommandOpen, setIsPromptCommandOpen] = useState(false);
@@ -352,6 +351,8 @@ export default function DriveAnalyzer() {
         }
       }
       
+      // Get custom instructions from localStorage instead of state
+      const customInstructions = localStorage.getItem('drive-analyzer-custom-instructions') || '';
       const finalPrompt = customInstructions 
         ? `${customInstructions}\n\n${finalUserPrompt}`
         : finalUserPrompt;
@@ -440,20 +441,19 @@ export default function DriveAnalyzer() {
     accessToken,
     selectedFiles,
     userPrompt,
-    customInstructions,
     aiModel,
     urls,
     pastedText,
     crawlingOptions,
     handleSaveAnalysis,
     localFiles,
-    webhookUrl, // <<< Add to dependency array
-    savedAnalyses, // Already present implicitly, but good to be explicit if logic depends on it for webhook
-    selectedAnalysisIdsForPrompt, // Already present
-    toggleAnalysisSelectionForPrompt, // Already present
-    setAiOutput, // Already present
-    setProcessingStatus, // Already present
-    setActiveTab, // Already present
+    webhookUrl,
+    savedAnalyses,
+    selectedAnalysisIdsForPrompt,
+    toggleAnalysisSelectionForPrompt,
+    setAiOutput,
+    setProcessingStatus,
+    setActiveTab,
   ]);
 
   // Handle saving a new prompt
@@ -699,7 +699,7 @@ export default function DriveAnalyzer() {
                     textareaRef={textareaRef}
                   />
 
-                  {/* Configuration Options Component */}
+                  {/* Configuration Options Component - no longer includes custom instructions */}
                   <ConfigurationOptions
                     aiModel={aiModel}
                     setAiModel={setAiModel}
@@ -708,10 +708,8 @@ export default function DriveAnalyzer() {
                     includeSubfolders={includeSubfolders}
                     setIncludeSubfolders={setIncludeSubfolders}
                     maxDocChars={MAX_DOC_CHARS}
-                    customInstructions={customInstructions}
-                    setCustomInstructions={setCustomInstructions}
-                    webhookUrl={webhookUrl} // <<< Pass prop
-                    handleWebhookUrlChange={handleWebhookUrlChange} // <<< Pass prop
+                    webhookUrl={webhookUrl}
+                    handleWebhookUrlChange={handleWebhookUrlChange}
                   />
                 </div>
                 

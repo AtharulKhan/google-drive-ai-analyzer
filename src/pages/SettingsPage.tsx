@@ -5,9 +5,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertCircle, Eye, EyeOff, Maximize2 } from "lucide-react";
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function SettingsPage() {
   const { clientId, setClientId } = useGoogleAuth();
@@ -21,12 +29,16 @@ export default function SettingsPage() {
   const [apifyToken, setApifyToken] = useState('');
   const [showApifyToken, setShowApifyToken] = useState(false);
   
-  // Load API keys from localStorage on component mount
+  // State for Custom Instructions
+  const [customInstructions, setCustomInstructions] = useState('');
+  const [isCustomInstructionsDialogOpen, setIsCustomInstructionsDialogOpen] = useState(false);
+  
+  // Load API keys and custom instructions from localStorage on component mount
   useEffect(() => {
     const savedOpenRouterKey = localStorage.getItem('openRouterApiKey') || '';
     const savedApifyToken = localStorage.getItem('apifyApiToken') || '';
+    const savedCustomInstructions = localStorage.getItem('drive-analyzer-custom-instructions') || '';
     
-    // If keys exist, show them
     if (savedOpenRouterKey) {
       setOpenRouterKey(savedOpenRouterKey);
     }
@@ -34,7 +46,14 @@ export default function SettingsPage() {
     if (savedApifyToken) {
       setApifyToken(savedApifyToken);
     }
+    
+    setCustomInstructions(savedCustomInstructions);
   }, []);
+  
+  // Save custom instructions to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('drive-analyzer-custom-instructions', customInstructions);
+  }, [customInstructions]);
   
   const handleSaveClientId = () => {
     if (clientIdInput.trim()) {
@@ -60,6 +79,59 @@ export default function SettingsPage() {
     <PageLayout>
       <div className="container mx-auto p-4 max-w-4xl">
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
+        
+        {/* Custom Instructions Card */}
+        <Card className="shadow-md mb-6">
+          <CardHeader>
+            <CardTitle>Custom Instructions</CardTitle>
+            <CardDescription>
+              Set default instructions that will be included with every AI analysis prompt
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="customInstructions">Custom Instructions (Saved Automatically)</Label>
+                <Dialog open={isCustomInstructionsDialogOpen} onOpenChange={setIsCustomInstructionsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Maximize2 className="h-4 w-4 mr-2" />
+                      Expand
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>Custom Instructions - Full Screen Editor</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 space-y-4">
+                      <Textarea
+                        value={customInstructions}
+                        onChange={(e) => setCustomInstructions(e.target.value)}
+                        placeholder="Add custom instructions that will be included with every prompt. These will be saved automatically for future sessions."
+                        className="resize-none h-[60vh]"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        These instructions will be automatically prepended to every AI analysis prompt. Changes are saved automatically.
+                      </p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <Textarea
+                id="customInstructions"
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                placeholder="Add custom instructions that will be included with every prompt. These will be saved for future sessions."
+                rows={4}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                These instructions will be automatically prepended to every AI analysis prompt.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
         
         <Card className="shadow-md mb-6">
           <CardHeader>
@@ -170,7 +242,6 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
         
-        {/* NEW: Apify API Configuration Card */}
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Apify API Configuration</CardTitle>
