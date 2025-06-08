@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -686,14 +687,44 @@ export default function DriveAnalyzer() {
                     textareaRef={textareaRef}
                   />
 
-                  {/* Collapsible Additional Options */}
+                  {/* Collapsible Additional Options with Fade Effect */}
                   <Collapsible open={isAdditionalOptionsOpen} onOpenChange={setIsAdditionalOptionsOpen}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                        <span className="text-sm text-muted-foreground">Additional Options</span>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${isAdditionalOptionsOpen ? 'rotate-180' : ''}`} />
-                      </Button>
-                    </CollapsibleTrigger>
+                    <div className="relative">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                          <span className="text-sm text-muted-foreground">Additional Options</span>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${isAdditionalOptionsOpen ? 'rotate-180' : ''}`} />
+                        </Button>
+                      </CollapsibleTrigger>
+                      
+                      {/* Fade preview when closed */}
+                      {!isAdditionalOptionsOpen && (
+                        <div className="mt-4 relative overflow-hidden max-h-20">
+                          <div className="space-y-6 opacity-50">
+                            {/* Preview of Configuration Options */}
+                            <div className="grid gap-4">
+                              <div>
+                                <label className="text-sm font-medium">Webhook URL (Optional, Saved Automatically)</label>
+                                <div className="h-10 bg-muted/30 rounded-md border"></div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium">AI Model</label>
+                                  <div className="h-10 bg-muted/30 rounded-md border"></div>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Max Files</label>
+                                  <div className="h-10 bg-muted/30 rounded-md border"></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Fade gradient overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>
+                        </div>
+                      )}
+                    </div>
+                    
                     <CollapsibleContent className="mt-4 space-y-6">
                       {/* Configuration Options */}
                       <ConfigurationOptions
