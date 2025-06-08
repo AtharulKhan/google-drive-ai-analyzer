@@ -3,21 +3,18 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { FileText, X, History } from "lucide-react";
+import { FileText, X, History, Save } from "lucide-react";
 import { GoogleFile } from "@/hooks/useDrivePicker";
 import { SavedAnalysis } from "@/hooks/useAnalysisState";
+import { saveDocumentToCache } from "@/utils/local-cache";
+import { toast } from "sonner";
 
 interface FileListProps {
-  googleFiles?: GoogleFile[];      // Renamed from selectedFiles, made optional
-  localFiles?: File[];             // Added for local files
-  displayFiles?: GoogleFile[];     // This prop might need re-evaluation. Is it only for Google Files pagination?
-                                   // For now, assuming it's for Google Files. Local files are typically fewer.
-  onRemoveGoogleFile?: (fileId: string) => void; // Renamed
-  onClearGoogleFiles?: () => void;               // Renamed
-  // TODO: Add onRemoveLocalFile and onClearLocalFiles if needed in the future
-  // onRemoveLocalFile?: (fileName: string) => void;
-  // onClearLocalFiles?: () => void;
-
+  googleFiles?: GoogleFile[];
+  localFiles?: File[];
+  displayFiles?: GoogleFile[];
+  onRemoveGoogleFile?: (fileId: string) => void;
+  onClearGoogleFiles?: () => void;
   selectedAnalysisIdsForPrompt?: string[];
   savedAnalyses?: SavedAnalysis[];
 }
@@ -32,9 +29,9 @@ const formatFileSize = (bytes: number): string => {
 };
 
 export function FileList({
-  googleFiles = [],    // Default to empty array
-  localFiles = [],     // Default to empty array
-  displayFiles = [],   // Default to empty array (primarily for Google Files)
+  googleFiles = [],
+  localFiles = [],
+  displayFiles = [],
   onRemoveGoogleFile,
   onClearGoogleFiles,
   selectedAnalysisIdsForPrompt = [],
@@ -45,10 +42,44 @@ export function FileList({
   );
 
   const totalFilesCount = googleFiles.length + localFiles.length;
-  // displayGoogleFiles will be 'displayFiles' if provided and populated, otherwise all googleFiles.
-  // This handles the "X more files" scenario for Google Drive files.
   const displayGoogleFiles = displayFiles.length > 0 ? displayFiles : googleFiles;
 
+  const handleSaveGoogleFile = async (file: GoogleFile) => {
+    try {
+      // For demo purposes, we'll save basic file info
+      // In a real implementation, you'd fetch the actual content
+      const documentId = saveDocumentToCache({
+        name: file.name,
+        type: 'google',
+        content: `[Google Drive File: ${file.name}]\nMIME Type: ${file.mimeType}\nFile ID: ${file.id}`,
+        mimeType: file.mimeType,
+        originalId: file.id,
+      });
+      
+      toast.success(`Document "${file.name}" saved to cache`);
+    } catch (error) {
+      console.error('Error saving document to cache:', error);
+      toast.error('Failed to save document to cache');
+    }
+  };
+
+  const handleSaveLocalFile = async (file: File) => {
+    try {
+      const content = await file.text();
+      const documentId = saveDocumentToCache({
+        name: file.name,
+        type: 'local',
+        content: content.slice(0, 200000), // Limit content size
+        mimeType: file.type,
+        size: file.size,
+      });
+      
+      toast.success(`Document "${file.name}" saved to cache`);
+    } catch (error) {
+      console.error('Error saving local file to cache:', error);
+      toast.error('Failed to save document to cache');
+    }
+  };
 
   return (
     <div>
@@ -105,11 +136,20 @@ export function FileList({
                   <Badge variant="outline" className="text-xs ml-2 shrink-0">
                     {file.mimeType.split("/").pop()?.split(".").pop() || "gdrive"}
                   </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
+                    onClick={() => handleSaveGoogleFile(file)}
+                    title="Save to cache"
+                  >
+                    <Save className="h-3 w-3" />
+                  </Button>
                   {onRemoveGoogleFile && (
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => onRemoveGoogleFile(file.id)}
                     >
                       <X className="h-4 w-4" />
@@ -126,7 +166,7 @@ export function FileList({
               {/* Display Local Files */}
               {localFiles.map((file) => (
                 <li
-                  key={`local-${file.name}-${file.lastModified}`} // Using name and lastModified for a more unique key
+                  key={`local-${file.name}-${file.lastModified}`}
                   className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded group"
                 >
                   <FileText className="h-4 w-4 shrink-0 text-green-500" />
@@ -137,10 +177,15 @@ export function FileList({
                   <Badge variant="outline" className="text-xs ml-1 shrink-0">
                     {formatFileSize(file.size)}
                   </Badge>
-                  {/* Placeholder for remove button if onRemoveLocalFile is implemented */}
-                  {/* <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0">
-                       <X className="h-4 w-4" />
-                     </Button> */}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
+                    onClick={() => handleSaveLocalFile(file)}
+                    title="Save to cache"
+                  >
+                    <Save className="h-3 w-3" />
+                  </Button>
                 </li>
               ))}
             </ul>

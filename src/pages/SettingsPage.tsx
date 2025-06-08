@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, Eye, EyeOff, Maximize2 } from "lucide-react";
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { toast } from 'sonner';
+import { CachedDocumentsManager } from "@/components/drive-analyzer/CachedDocumentsManager";
 import {
   Dialog,
   DialogContent,
@@ -79,6 +79,11 @@ export default function SettingsPage() {
     <PageLayout>
       <div className="container mx-auto p-4 max-w-4xl">
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
+        
+        {/* Cached Documents Section */}
+        <div className="mb-6">
+          <CachedDocumentsManager />
+        </div>
         
         {/* Custom Instructions Card */}
         <Card className="shadow-md mb-6">
