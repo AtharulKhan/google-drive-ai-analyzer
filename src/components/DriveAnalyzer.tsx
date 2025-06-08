@@ -13,7 +13,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, Combine, Upload } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, Combine, Upload, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker } from "@/hooks/useDrivePicker";
@@ -109,6 +110,7 @@ export default function DriveAnalyzer() {
   // Local state
   const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [isUnifiedViewOpen, setIsUnifiedViewOpen] = useState(false);
+  const [isConfigurationOpen, setIsConfigurationOpen] = useState(false);
 
   // State variables
   const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
@@ -685,18 +687,28 @@ export default function DriveAnalyzer() {
                     textareaRef={textareaRef}
                   />
 
-                  {/* Configuration Options Component - no longer includes custom instructions */}
-                  <ConfigurationOptions
-                    aiModel={aiModel}
-                    setAiModel={setAiModel}
-                    maxFiles={maxFiles}
-                    setMaxFiles={setMaxFiles}
-                    includeSubfolders={includeSubfolders}
-                    setIncludeSubfolders={setIncludeSubfolders}
-                    maxDocChars={MAX_DOC_CHARS}
-                    webhookUrl={webhookUrl}
-                    handleWebhookUrlChange={handleWebhookUrlChange}
-                  />
+                  {/* Collapsible Configuration Options */}
+                  <Collapsible open={isConfigurationOpen} onOpenChange={setIsConfigurationOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                        <span className="text-sm text-muted-foreground">Configuration Options</span>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isConfigurationOpen ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-4">
+                      <ConfigurationOptions
+                        aiModel={aiModel}
+                        setAiModel={setAiModel}
+                        maxFiles={maxFiles}
+                        setMaxFiles={setMaxFiles}
+                        includeSubfolders={includeSubfolders}
+                        setIncludeSubfolders={setIncludeSubfolders}
+                        maxDocChars={MAX_DOC_CHARS}
+                        webhookUrl={webhookUrl}
+                        handleWebhookUrlChange={handleWebhookUrlChange}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
                 
                 <Separator className="my-6" /> 
