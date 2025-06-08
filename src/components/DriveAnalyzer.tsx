@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -110,7 +109,7 @@ export default function DriveAnalyzer() {
   // Local state
   const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [isUnifiedViewOpen, setIsUnifiedViewOpen] = useState(false);
-  const [isConfigurationOpen, setIsConfigurationOpen] = useState(false);
+  const [isAdditionalOptionsOpen, setIsAdditionalOptionsOpen] = useState(false);
 
   // State variables
   const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
@@ -675,7 +674,7 @@ export default function DriveAnalyzer() {
 
                 <Separator className="my-6" />
 
-                {/* Configuration Section */}
+                {/* Prompt and Configuration Section */}
                 <div className="grid gap-4">
                   {/* Prompt Selector Component */}
                   <PromptSelector
@@ -687,15 +686,16 @@ export default function DriveAnalyzer() {
                     textareaRef={textareaRef}
                   />
 
-                  {/* Collapsible Configuration Options */}
-                  <Collapsible open={isConfigurationOpen} onOpenChange={setIsConfigurationOpen}>
+                  {/* Collapsible Additional Options */}
+                  <Collapsible open={isAdditionalOptionsOpen} onOpenChange={setIsAdditionalOptionsOpen}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                        <span className="text-sm text-muted-foreground">Configuration Options</span>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${isConfigurationOpen ? 'rotate-180' : ''}`} />
+                        <span className="text-sm text-muted-foreground">Additional Options</span>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isAdditionalOptionsOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-4">
+                    <CollapsibleContent className="mt-4 space-y-6">
+                      {/* Configuration Options */}
                       <ConfigurationOptions
                         aiModel={aiModel}
                         setAiModel={setAiModel}
@@ -707,33 +707,34 @@ export default function DriveAnalyzer() {
                         webhookUrl={webhookUrl}
                         handleWebhookUrlChange={handleWebhookUrlChange}
                       />
+                      
+                      <Separator />
+                      
+                      {/* Text & URL Inputs */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Text & URL Inputs</CardTitle>
+                          <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <TextUrlInput
+                            pastedText={pastedText}
+                            onPastedTextChange={handlePastedTextChange}
+                            urls={urls}
+                            onUrlAdd={handleAddUrl}
+                            onUrlRemove={handleRemoveUrl}
+                            onClearPastedText={handleClearPastedText}
+                            onClearUrls={handleClearUrls}
+                            currentUrlInput={currentUrlInput}
+                            onCurrentUrlInputChange={setCurrentUrlInput}
+                            crawlingOptions={crawlingOptions}
+                            onCrawlingOptionsChange={handleCrawlingOptionsChange}
+                          />
+                        </CardContent>
+                      </Card>
                     </CollapsibleContent>
                   </Collapsible>
                 </div>
-                
-                <Separator className="my-6" /> 
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Text & URL Inputs</CardTitle>
-                    <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <TextUrlInput
-                      pastedText={pastedText}
-                      onPastedTextChange={handlePastedTextChange}
-                      urls={urls}
-                      onUrlAdd={handleAddUrl}
-                      onUrlRemove={handleRemoveUrl}
-                      onClearPastedText={handleClearPastedText}
-                      onClearUrls={handleClearUrls}
-                      currentUrlInput={currentUrlInput}
-                      onCurrentUrlInputChange={setCurrentUrlInput}
-                      crawlingOptions={crawlingOptions}
-                      onCrawlingOptionsChange={handleCrawlingOptionsChange}
-                    />
-                  </CardContent>
-                </Card>
 
               </div>
             </TabsContent>
