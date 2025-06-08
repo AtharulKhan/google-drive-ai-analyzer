@@ -716,16 +716,16 @@ export default function DriveAnalyzer() {
                               </div>
                             </div>
                             {/* Fade gradient overlay */}
-                            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>
+                            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>
                           </div>
                           
                           {/* Centered arrow trigger at bottom */}
-                          <div className="flex justify-center -mt-6">
+                          <div className="flex justify-center -mt-8">
                             <CollapsibleTrigger asChild>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                className="h-8 w-8 rounded-full bg-background border shadow-sm hover:bg-muted"
+                                className="h-8 w-8 rounded-full bg-background border shadow-sm hover:bg-muted z-10 relative"
                               >
                                 <ChevronDown className="h-4 w-4" />
                               </Button>
