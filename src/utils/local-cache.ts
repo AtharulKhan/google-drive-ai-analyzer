@@ -12,6 +12,7 @@ export interface CachedDocument {
   size?: number;
   cachedAt: number;
   originalId?: string; // For Google Drive files
+  includeInPrompts?: boolean; // New property for auto-inclusion in prompts
 }
 
 const CACHE_KEY = 'drive-analyzer-document-cache';
@@ -38,12 +39,32 @@ export function saveDocumentToCache(document: Omit<CachedDocument, 'id' | 'cache
     ...document,
     id: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     cachedAt: Date.now(),
+    includeInPrompts: false, // Default to false
   };
   
   const updatedDocuments = [newDocument, ...cachedDocuments];
   localStorage.setItem(CACHE_KEY, JSON.stringify(updatedDocuments));
   
   return newDocument.id;
+}
+
+/**
+ * Update a document's includeInPrompts setting
+ */
+export function updateDocumentPromptInclusion(documentId: string, includeInPrompts: boolean): void {
+  const cachedDocuments = getCachedDocuments();
+  const updatedDocuments = cachedDocuments.map(doc =>
+    doc.id === documentId ? { ...doc, includeInPrompts } : doc
+  );
+  localStorage.setItem(CACHE_KEY, JSON.stringify(updatedDocuments));
+}
+
+/**
+ * Get documents that should be included in prompts
+ */
+export function getDocumentsForPrompts(): CachedDocument[] {
+  const cachedDocuments = getCachedDocuments();
+  return cachedDocuments.filter(doc => doc.includeInPrompts === true);
 }
 
 /**

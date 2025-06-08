@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +22,7 @@ import {
   removeDocumentFromCache,
   clearAllCachedDocuments,
   getCacheStats,
+  updateDocumentPromptInclusion,
   CachedDocument,
 } from '@/utils/local-cache';
 
@@ -79,6 +82,12 @@ export function CachedDocumentsManager() {
     URL.revokeObjectURL(url);
   };
 
+  const handlePromptInclusionChange = (documentId: string, checked: boolean) => {
+    updateDocumentPromptInclusion(documentId, checked);
+    loadCachedDocuments();
+    toast.success(checked ? 'Document will be included in prompts' : 'Document removed from auto-prompts');
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'google': return 'text-blue-500';
@@ -89,13 +98,15 @@ export function CachedDocumentsManager() {
     }
   };
 
+  const documentsInPrompts = cachedDocuments.filter(doc => doc.includeInPrompts).length;
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Cached Documents</CardTitle>
           <CardDescription>
-            Documents saved locally for quick access. These are stored in your browser's local storage.
+            Documents saved locally for quick access. Check the boxes to automatically include documents in all AI prompts.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -106,6 +117,9 @@ export function CachedDocumentsManager() {
               </Badge>
               <Badge variant="outline">
                 {cacheStats.formattedSize} total
+              </Badge>
+              <Badge variant={documentsInPrompts > 0 ? "default" : "secondary"}>
+                {documentsInPrompts} in auto-prompts
               </Badge>
             </div>
             {cachedDocuments.length > 0 && (
@@ -127,6 +141,13 @@ export function CachedDocumentsManager() {
                   <Card key={document.id} className="p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 flex-1">
+                        <Checkbox
+                          checked={document.includeInPrompts || false}
+                          onCheckedChange={(checked) => 
+                            handlePromptInclusionChange(document.id, checked === true)
+                          }
+                          title="Include in all AI prompts"
+                        />
                         <FileText className={`h-4 w-4 ${getTypeColor(document.type)}`} />
                         <span className="font-medium truncate">{document.name}</span>
                         <Badge variant="secondary" className="capitalize">
@@ -135,6 +156,11 @@ export function CachedDocumentsManager() {
                         {document.mimeType && (
                           <Badge variant="outline" className="text-xs">
                             {document.mimeType.split('/').pop()}
+                          </Badge>
+                        )}
+                        {document.includeInPrompts && (
+                          <Badge variant="default" className="text-xs">
+                            Auto-prompt
                           </Badge>
                         )}
                       </div>
@@ -214,6 +240,7 @@ export function CachedDocumentsManager() {
               <AlertDialogDescription>
                 Type: {viewingDocument.type} • 
                 Cached: {new Date(viewingDocument.cachedAt).toLocaleString()}
+                {viewingDocument.includeInPrompts && " • Auto-included in prompts"}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <ScrollArea className="flex-1 border rounded-md p-4">

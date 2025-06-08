@@ -1,4 +1,6 @@
 
+import { getDocumentsForPrompts } from '@/utils/local-cache';
+
 // Function to analyze text with OpenRouter API
 export async function analyzeWithOpenRouter(content: string, userPrompt: string, options: { model?: string } = {}) {
   try {
@@ -11,8 +13,20 @@ export async function analyzeWithOpenRouter(content: string, userPrompt: string,
     
     const model = options.model || 'google/gemini-2.5-flash-preview';
 
-    // Prepare the prompt by combining user prompt and content
-    const prompt = `${userPrompt.trim()}\n\n================ SOURCE DOCUMENTS ================\n${content}\n==================================================`;
+    // Get cached documents marked for auto-inclusion
+    const cachedDocsForPrompts = getDocumentsForPrompts();
+    let cachedContent = '';
+    
+    if (cachedDocsForPrompts.length > 0) {
+      cachedContent = '\n\n================ CACHED REFERENCE DOCUMENTS ================\n' +
+        cachedDocsForPrompts.map(doc => 
+          `--- ${doc.name} (${doc.type}) ---\n${doc.content}`
+        ).join('\n\n') +
+        '\n==============================================================\n';
+    }
+
+    // Prepare the prompt by combining user prompt, content, and cached documents
+    const prompt = `${userPrompt.trim()}${cachedContent}\n\n================ SOURCE DOCUMENTS ================\n${content}\n==================================================`;
     
     // Call the OpenRouter API
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
