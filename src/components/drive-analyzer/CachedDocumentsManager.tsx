@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,12 +67,12 @@ export function CachedDocumentsManager() {
     setIsClearAllDialogOpen(false);
   };
 
-  const handleDownloadDocument = (document: CachedDocument) => {
-    const blob = new Blob([document.content], { type: 'text/plain' });
+  const handleDownloadDocument = (doc: CachedDocument) => {
+    const blob = new Blob([doc.content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${document.name}.txt`;
+    a.download = `${doc.name}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
