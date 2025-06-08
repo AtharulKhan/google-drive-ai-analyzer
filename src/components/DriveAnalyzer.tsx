@@ -661,7 +661,7 @@ export default function DriveAnalyzer() {
                   </div>
                 </TooltipProvider>
 
-                {/* File List Component */}
+                {/* File List Component - now with accessToken */}
                 <FileList
                   googleFiles={selectedFiles}
                   localFiles={localFiles}
@@ -670,6 +670,7 @@ export default function DriveAnalyzer() {
                   onClearGoogleFiles={handleClearFiles}
                   selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
                   savedAnalyses={savedAnalyses}
+                  accessToken={accessToken}
                 />
 
                 <Separator className="my-6" />

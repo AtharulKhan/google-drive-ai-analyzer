@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,6 +6,7 @@ import { FileText, X, History, Save } from "lucide-react";
 import { GoogleFile } from "@/hooks/useDrivePicker";
 import { SavedAnalysis } from "@/hooks/useAnalysisState";
 import { saveDocumentToCache } from "@/utils/local-cache";
+import { fetchFileContent } from "@/utils/google-api";
 import { toast } from "sonner";
 
 interface FileListProps {
@@ -17,6 +17,7 @@ interface FileListProps {
   onClearGoogleFiles?: () => void;
   selectedAnalysisIdsForPrompt?: string[];
   savedAnalyses?: SavedAnalysis[];
+  accessToken?: string | null; // Add accessToken prop
 }
 
 // Helper to format file size
@@ -35,7 +36,8 @@ export function FileList({
   onRemoveGoogleFile,
   onClearGoogleFiles,
   selectedAnalysisIdsForPrompt = [],
-  savedAnalyses = []
+  savedAnalyses = [],
+  accessToken = null // Default to null
 }: FileListProps) {
   const selectedAnalyses = savedAnalyses.filter(analysis => 
     selectedAnalysisIdsForPrompt.includes(analysis.id)
@@ -45,21 +47,29 @@ export function FileList({
   const displayGoogleFiles = displayFiles.length > 0 ? displayFiles : googleFiles;
 
   const handleSaveGoogleFile = async (file: GoogleFile) => {
+    if (!accessToken) {
+      toast.error("Please sign in to Google Drive to save documents");
+      return;
+    }
+
     try {
-      // For demo purposes, we'll save basic file info
-      // In a real implementation, you'd fetch the actual content
+      toast.loading(`Extracting content from "${file.name}"...`);
+      
+      // Fetch the actual content from Google Drive
+      const content = await fetchFileContent(file, accessToken);
+      
       const documentId = saveDocumentToCache({
         name: file.name,
         type: 'google',
-        content: `[Google Drive File: ${file.name}]\nMIME Type: ${file.mimeType}\nFile ID: ${file.id}`,
+        content: content,
         mimeType: file.mimeType,
         originalId: file.id,
       });
       
-      toast.success(`Document "${file.name}" saved to cache`);
+      toast.success(`Document "${file.name}" saved to cache with full content`);
     } catch (error) {
-      console.error('Error saving document to cache:', error);
-      toast.error('Failed to save document to cache');
+      console.error('Error saving Google Drive document to cache:', error);
+      toast.error(`Failed to save document "${file.name}": ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -142,6 +152,7 @@ export function FileList({
                     className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
                     onClick={() => handleSaveGoogleFile(file)}
                     title="Save to cache"
+                    disabled={!accessToken}
                   >
                     <Save className="h-3 w-3" />
                   </Button>
