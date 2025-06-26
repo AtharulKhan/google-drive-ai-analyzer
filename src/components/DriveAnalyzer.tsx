@@ -565,14 +565,14 @@ export default function DriveAnalyzer() {
               <div className="space-y-6">
                 {/* File Selection Section - Now includes saved prompts and analysis buttons */}
                 <TooltipProvider>
-                  <div className="flex items-center justify-center gap-2 mb-6">
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 px-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           onClick={handleBrowseDrive}
                           disabled={!isSignedIn || !isReady}
                           size="icon"
-                          className="bg-green-600 hover:bg-green-700 text-white"
+                          className="bg-green-600 hover:bg-green-700 text-white shrink-0"
                         >
                           <FolderOpen className="h-4 w-4" />
                         </Button>
@@ -588,6 +588,7 @@ export default function DriveAnalyzer() {
                           onClick={handleLocalFileInputClick}
                           size="icon"
                           variant="outline"
+                          className="shrink-0"
                         >
                           <Upload className="h-4 w-4" />
                         </Button>
@@ -601,7 +602,7 @@ export default function DriveAnalyzer() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DialogTrigger asChild>
-                            <Button size="icon" variant="outline">
+                            <Button size="icon" variant="outline" className="shrink-0">
                               <Combine className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
@@ -634,6 +635,7 @@ export default function DriveAnalyzer() {
                           disabled={selectedFiles.length === 0 && localFiles.length === 0}
                           size="icon"
                           variant="outline"
+                          className="shrink-0"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -643,21 +645,23 @@ export default function DriveAnalyzer() {
                       </TooltipContent>
                     </Tooltip>
 
-                    {/* Saved Prompts and Analysis Buttons */}
-                    <SavedPrompts
-                      savedPrompts={savedPrompts}
-                      newPromptTitle={newPromptTitle}
-                      setNewPromptTitle={setNewPromptTitle}
-                      newPromptContent={newPromptContent}
-                      setNewPromptContent={setNewPromptContent}
-                      onSavePrompt={handleSavePrompt}
-                      onDeletePrompt={handleDeletePrompt}
-                    />
-                    
-                    <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)}>
-                      <History className="h-4 w-4" />
-                      <span className="sr-only">View Saved Analyses</span>
-                    </Button>
+                    {/* Mobile responsive button group */}
+                    <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                      <SavedPrompts
+                        savedPrompts={savedPrompts}
+                        newPromptTitle={newPromptTitle}
+                        setNewPromptTitle={setNewPromptTitle}
+                        newPromptContent={newPromptContent}
+                        setNewPromptContent={setNewPromptContent}
+                        onSavePrompt={handleSavePrompt}
+                        onDeletePrompt={handleDeletePrompt}
+                      />
+                      
+                      <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)} className="shrink-0">
+                        <History className="h-4 w-4" />
+                        <span className="sr-only">View Saved Analyses</span>
+                      </Button>
+                    </div>
                   </div>
                 </TooltipProvider>
 
