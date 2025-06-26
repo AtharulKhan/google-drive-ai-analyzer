@@ -506,7 +506,7 @@ export default function DriveAnalyzer() {
                 Google Drive AI Analyzer
               </CardTitle>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link to="/settings">
                 <Button variant="outline" size="icon">
                   <Settings className="h-4 w-4" />
@@ -620,7 +620,7 @@ export default function DriveAnalyzer() {
                 </Tooltip>
 
                 {/* Mobile responsive button group */}
-                <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start w-full sm:w-auto">
                   <SavedPrompts
                     savedPrompts={savedPrompts}
                     newPromptTitle={newPromptTitle}
