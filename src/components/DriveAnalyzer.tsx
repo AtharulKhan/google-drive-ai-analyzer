@@ -505,25 +505,8 @@ export default function DriveAnalyzer() {
               <CardTitle className="text-2xl">
                 Google Drive AI Analyzer
               </CardTitle>
-              <CardDescription>
-                Select documents from Google Drive and analyze them with AI
-              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {/* Saved Prompts Sheet */}
-              <SavedPrompts
-                savedPrompts={savedPrompts}
-                newPromptTitle={newPromptTitle}
-                setNewPromptTitle={setNewPromptTitle}
-                newPromptContent={newPromptContent}
-                setNewPromptContent={setNewPromptContent}
-                onSavePrompt={handleSavePrompt}
-                onDeletePrompt={handleDeletePrompt}
-              />
-               <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)}>
-                <History className="h-4 w-4" />
-                <span className="sr-only">View Saved Analyses</span>
-              </Button>
               <Link to="/settings">
                 <Button variant="outline" size="icon">
                   <Settings className="h-4 w-4" />
@@ -552,6 +535,110 @@ export default function DriveAnalyzer() {
               )}
             </div>
           </div>
+          
+          {/* Moved buttons below the title */}
+          <div className="pt-4">
+            <TooltipProvider>
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleBrowseDrive}
+                      disabled={!isSignedIn || !isReady}
+                      size="icon"
+                      className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Add Files from Google Drive</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleLocalFileInputClick}
+                      size="icon"
+                      variant="outline"
+                      className="shrink-0"
+                    >
+                      <Upload className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Select Local Files</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DialogTrigger asChild>
+                        <Button size="icon" variant="outline" className="shrink-0">
+                          <Combine className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Unified Content View</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <DialogContent className="max-w-5xl h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                    </DialogHeader>
+                    <UnifiedContentView
+                      googleFiles={selectedFiles}
+                      localFiles={localFiles}
+                      pastedText={pastedText}
+                      urls={urls}
+                      userPrompt={userPrompt}
+                      customInstructions={customInstructionsForUnifiedView}
+                      accessToken={accessToken}
+                      isEditable={true}
+                    />
+                  </DialogContent>
+                </Dialog>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleClearFiles}
+                      disabled={selectedFiles.length === 0 && localFiles.length === 0}
+                      size="icon"
+                      variant="outline"
+                      className="shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Clear All Files</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Mobile responsive button group */}
+                <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                  <SavedPrompts
+                    savedPrompts={savedPrompts}
+                    newPromptTitle={newPromptTitle}
+                    setNewPromptTitle={setNewPromptTitle}
+                    newPromptContent={newPromptContent}
+                    setNewPromptContent={setNewPromptContent}
+                    onSavePrompt={handleSavePrompt}
+                    onDeletePrompt={handleDeletePrompt}
+                  />
+                  
+                  <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)} className="shrink-0">
+                    <History className="h-4 w-4" />
+                    <span className="sr-only">View Saved Analyses</span>
+                  </Button>
+                </div>
+              </div>
+            </TooltipProvider>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -563,108 +650,6 @@ export default function DriveAnalyzer() {
 
             <TabsContent value="files">
               <div className="space-y-6">
-                {/* File Selection Section - Now includes saved prompts and analysis buttons */}
-                <TooltipProvider>
-                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 px-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={handleBrowseDrive}
-                          disabled={!isSignedIn || !isReady}
-                          size="icon"
-                          className="bg-green-600 hover:bg-green-700 text-white shrink-0"
-                        >
-                          <FolderOpen className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Add Files from Google Drive</p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={handleLocalFileInputClick}
-                          size="icon"
-                          variant="outline"
-                          className="shrink-0"
-                        >
-                          <Upload className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Select Local Files</p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <DialogTrigger asChild>
-                            <Button size="icon" variant="outline" className="shrink-0">
-                              <Combine className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Unified Content View</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <DialogContent className="max-w-5xl h-[80vh]">
-                        <DialogHeader>
-                          <DialogTitle>Unified Content View - All Sources</DialogTitle>
-                        </DialogHeader>
-                        <UnifiedContentView
-                          googleFiles={selectedFiles}
-                          localFiles={localFiles}
-                          pastedText={pastedText}
-                          urls={urls}
-                          userPrompt={userPrompt}
-                          customInstructions={customInstructionsForUnifiedView}
-                          accessToken={accessToken}
-                          isEditable={true}
-                        />
-                      </DialogContent>
-                    </Dialog>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={handleClearFiles}
-                          disabled={selectedFiles.length === 0 && localFiles.length === 0}
-                          size="icon"
-                          variant="outline"
-                          className="shrink-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Clear All Files</p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    {/* Mobile responsive button group */}
-                    <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
-                      <SavedPrompts
-                        savedPrompts={savedPrompts}
-                        newPromptTitle={newPromptTitle}
-                        setNewPromptTitle={setNewPromptTitle}
-                        newPromptContent={newPromptContent}
-                        setNewPromptContent={setNewPromptContent}
-                        onSavePrompt={handleSavePrompt}
-                        onDeletePrompt={handleDeletePrompt}
-                      />
-                      
-                      <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)} className="shrink-0">
-                        <History className="h-4 w-4" />
-                        <span className="sr-only">View Saved Analyses</span>
-                      </Button>
-                    </div>
-                  </div>
-                </TooltipProvider>
-
                 {/* File List Component - now with accessToken */}
                 <FileList
                   googleFiles={selectedFiles}
@@ -725,7 +710,7 @@ export default function DriveAnalyzer() {
                           </div>
                           
                           {/* Centered arrow trigger at bottom */}
-                          <div className="flex justify-center -mt-8">
+                          <div className="flex justify-center -mt-2">
                             <CollapsibleTrigger asChild>
                               <Button 
                                 variant="ghost" 
