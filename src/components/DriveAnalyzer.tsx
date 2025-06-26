@@ -500,12 +500,7 @@ export default function DriveAnalyzer() {
     <div className="container mx-auto p-4 max-w-6xl">
       <Card className="w-full shadow-lg">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">
-                Google Drive AI Analyzer
-              </CardTitle>
-            </div>
+          <div className="flex items-center justify-between sm:justify-end">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link to="/settings">
                 <Button variant="outline" size="icon">
