@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 
@@ -60,6 +61,9 @@ export function useDrivePicker({ accessToken }: UseDrivePickerOptions) {
     script.onload = () => {
       window.gapi.load("picker", () => {
         setPickerApiLoaded(true);
+      }, (error: any) => {
+        console.error("Failed to load Google Picker API:", error);
+        toast.error("Failed to load Google Picker API");
       });
     };
     script.onerror = () => {
