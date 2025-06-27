@@ -13,7 +13,6 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { FolderOpen, Loader2, RefreshCw, Trash2, Combine, Upload, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
@@ -49,7 +48,6 @@ import { History } from "lucide-react";
 import { PromptSelector } from "./drive-analyzer/PromptSelector";
 import { AnalysisResults } from "./drive-analyzer/AnalysisResults";
 import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
@@ -462,46 +460,6 @@ export default function DriveAnalyzer() {
     }
   }, [selectedFiles, localFiles, pastedText, urls, aiOutput]);
 
-  const isMobile = useIsMobile();
-
-  const buttonConfigs = [
-    {
-      onClick: handleBrowseDrive,
-      disabled: !isSignedIn || !isReady,
-      className: "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm",
-      icon: FolderOpen,
-      text: "Browse Drive",
-      tooltip: "Browse and select files from Google Drive"
-    },
-    {
-      onClick: handleLocalFileInputClick,
-      disabled: false,
-      className: "hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 text-xs sm:text-sm",
-      variant: "outline" as const,
-      icon: Upload,
-      text: "Local Files",
-      tooltip: "Select files from your computer"
-    },
-    {
-      onClick: () => setIsUnifiedViewOpen(true),
-      disabled: false,
-      className: "hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 text-xs sm:text-sm",
-      variant: "outline" as const,
-      icon: Combine,
-      text: "Preview",
-      tooltip: "Preview all content in unified view"
-    },
-    {
-      onClick: handleClearAllFiles,
-      disabled: selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0,
-      className: "hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 text-xs sm:text-sm",
-      variant: "outline" as const,
-      icon: Trash2,
-      text: "Clear All",
-      tooltip: "Clear all files, text, and URLs"
-    }
-  ];
-
   const customInstructionsForUnifiedView = React.useMemo(() => {
     return localStorage.getItem('drive-analyzer-custom-instructions') || '';
   }, [isUnifiedViewOpen]);
@@ -528,101 +486,113 @@ export default function DriveAnalyzer() {
                 <div className="space-y-4 sm:space-y-6">
                   <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/20">
                     <TooltipProvider>
-                      {isMobile ? (
-                        <Carousel className="w-full">
-                          <CarouselContent className="-ml-2">
-                            {buttonConfigs.map((config, index) => (
-                              <CarouselItem key={index} className="basis-auto pl-2">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      onClick={config.onClick}
-                                      disabled={config.disabled}
-                                      size="sm"
-                                      variant={config.variant}
-                                      className={config.className}
-                                    >
-                                      <config.icon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                                      <span className="whitespace-nowrap">{config.text}</span>
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{config.tooltip}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </CarouselItem>
-                            ))}
-                            <CarouselItem className="basis-auto pl-2">
-                              <div className="flex gap-2">
-                                <SavedPrompts
-                                  savedPrompts={savedPrompts}
-                                  newPromptTitle={newPromptTitle}
-                                  setNewPromptTitle={setNewPromptTitle}
-                                  newPromptContent={newPromptContent}
-                                  setNewPromptContent={setNewPromptContent}
-                                  onSavePrompt={handleSavePrompt}
-                                  onDeletePrompt={handleDeletePrompt}
-                                />
-                                
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => setIsSavedAnalysesOpen(true)} 
-                                  className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 text-xs sm:text-sm whitespace-nowrap"
-                                >
-                                  <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                                  <span>History</span>
-                                </Button>
-                              </div>
-                            </CarouselItem>
-                          </CarouselContent>
-                        </Carousel>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
-                          {buttonConfigs.map((config, index) => (
-                            <Tooltip key={index}>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  onClick={config.onClick}
-                                  disabled={config.disabled}
-                                  size="sm"
-                                  variant={config.variant}
-                                  className={config.className}
-                                >
-                                  <config.icon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                                  <span className="hidden sm:inline">{config.text}</span>
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{config.tooltip}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ))}
-
-                          <div className="col-span-2 sm:col-span-1 flex gap-2">
-                            <SavedPrompts
-                              savedPrompts={savedPrompts}
-                              newPromptTitle={newPromptTitle}
-                              setNewPromptTitle={setNewPromptTitle}
-                              newPromptContent={newPromptContent}
-                              setNewPromptContent={setNewPromptContent}
-                              onSavePrompt={handleSavePrompt}
-                              onDeletePrompt={handleDeletePrompt}
-                            />
-                            
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setIsSavedAnalysesOpen(true)} 
-                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 text-xs sm:text-sm"
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleBrowseDrive}
+                              disabled={!isSignedIn || !isReady}
+                              size="sm"
+                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                             >
-                              <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">History</span>
-                              <span className="sr-only">View Saved Analyses</span>
+                              <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Browse Drive</span>
                             </Button>
-                          </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Browse and select files from Google Drive</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleLocalFileInputClick}
+                              size="sm"
+                              variant="outline"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 text-xs sm:text-sm"
+                            >
+                              <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Local Files</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Select files from your computer</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <DialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 text-xs sm:text-sm">
+                                  <Combine className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                  <span className="hidden sm:inline">Preview</span>
+                                </Button>
+                              </DialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Preview all content in unified view</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
+                            <DialogHeader>
+                              <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                            </DialogHeader>
+                            <UnifiedContentView
+                              googleFiles={selectedFiles}
+                              localFiles={localFiles}
+                              pastedText={pastedText}
+                              urls={urls}
+                              userPrompt={userPrompt}
+                              customInstructions={customInstructionsForUnifiedView}
+                              accessToken={accessToken}
+                              isEditable={true}
+                            />
+                          </DialogContent>
+                        </Dialog>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleClearAllFiles}
+                              disabled={selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0}
+                              size="sm"
+                              variant="outline"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 text-xs sm:text-sm"
+                            >
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Clear All</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Clear all files, text, and URLs</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <div className="col-span-2 sm:col-span-1 flex gap-2">
+                          <SavedPrompts
+                            savedPrompts={savedPrompts}
+                            newPromptTitle={newPromptTitle}
+                            setNewPromptTitle={setNewPromptTitle}
+                            newPromptContent={newPromptContent}
+                            setNewPromptContent={setNewPromptContent}
+                            onSavePrompt={handleSavePrompt}
+                            onDeletePrompt={handleDeletePrompt}
+                          />
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setIsSavedAnalysesOpen(true)} 
+                            className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 text-xs sm:text-sm"
+                          >
+                            <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">History</span>
+                            <span className="sr-only">View Saved Analyses</span>
+                          </Button>
                         </div>
-                      )}
+                      </div>
                     </TooltipProvider>
                   </div>
 
