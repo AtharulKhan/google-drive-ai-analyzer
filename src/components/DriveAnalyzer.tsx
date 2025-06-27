@@ -104,7 +104,7 @@ export default function DriveAnalyzer() {
   const [isPromptCommandOpen, setIsPromptCommandOpen] = useState(false);
   const [viewingAnalysis, setViewingAnalysis] = useState<SavedAnalysis | null>(null);
   const [isSavedAnalysesOpen, setIsSavedAnalysesOpen] = useState(false);
-  const [isMoreButtonsOpen, setIsMoreButtonsOpen] = useState(false);
+  const [isMoreButtonsExpanded, setIsMoreButtonsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [currentAnalysisResultForDownload, setCurrentAnalysisResultForDownload] = useState<SavedAnalysis | null>(null);
 
@@ -487,142 +487,131 @@ export default function DriveAnalyzer() {
                 <div className="space-y-4 sm:space-y-6">
                   <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/20">
                     <TooltipProvider>
-                      <div className="flex flex-wrap gap-2 sm:gap-3">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              onClick={handleBrowseDrive}
-                              disabled={!isSignedIn || !isReady}
-                              size="sm"
-                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
-                            >
-                              <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Browse Drive</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Browse and select files from Google Drive</p>
-                          </TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              onClick={handleLocalFileInputClick}
-                              size="sm"
-                              variant="outline"
-                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 text-xs sm:text-sm"
-                            >
-                              <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Local Files</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Select files from your computer</p>
-                          </TooltipContent>
-                        </Tooltip>
-
-                        <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 text-xs sm:text-sm">
-                                  <Combine className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                                  <span className="hidden sm:inline">Preview</span>
-                                </Button>
-                              </DialogTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Preview all content in unified view</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
-                            <DialogHeader>
-                              <DialogTitle>Unified Content View - All Sources</DialogTitle>
-                            </DialogHeader>
-                            <UnifiedContentView
-                              googleFiles={selectedFiles}
-                              localFiles={localFiles}
-                              pastedText={pastedText}
-                              urls={urls}
-                              userPrompt={userPrompt}
-                              customInstructions={customInstructionsForUnifiedView}
-                              accessToken={accessToken}
-                              isEditable={true}
-                            />
-                          </DialogContent>
-                        </Dialog>
-
-                        <Dialog open={isMoreButtonsOpen} onOpenChange={setIsMoreButtonsOpen}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <DialogTrigger asChild>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-gray-50/50 text-xs sm:text-sm"
-                                >
-                                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span className="hidden sm:inline">More</span>
-                                </Button>
-                              </DialogTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>More actions</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <DialogContent className="sm:max-w-md">
-                            <DialogHeader>
-                              <DialogTitle>More Actions</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid grid-cols-2 gap-3 py-4">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    onClick={() => {
-                                      handleClearAllFiles();
-                                      setIsMoreButtonsOpen(false);
-                                    }}
-                                    disabled={selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0}
-                                    size="sm"
-                                    variant="outline"
-                                    className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 text-xs sm:text-sm"
-                                  >
-                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                                    Clear All
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Clear all files, text, and URLs</p>
-                                </TooltipContent>
-                              </Tooltip>
-
-                              <SavedPrompts
-                                savedPrompts={savedPrompts}
-                                newPromptTitle={newPromptTitle}
-                                setNewPromptTitle={setNewPromptTitle}
-                                newPromptContent={newPromptContent}
-                                setNewPromptContent={setNewPromptContent}
-                                onSavePrompt={handleSavePrompt}
-                                onDeletePrompt={handleDeletePrompt}
-                              />
-                              
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => {
-                                  setIsSavedAnalysesOpen(true);
-                                  setIsMoreButtonsOpen(false);
-                                }} 
-                                className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 text-xs sm:text-sm"
+                              <Button
+                                onClick={handleBrowseDrive}
+                                disabled={!isSignedIn || !isReady}
+                                size="sm"
+                                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                               >
-                                <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                                <span className="hidden sm:inline">History</span>
-                                <span className="sr-only">View Saved Analyses</span>
+                                <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                <span className="hidden sm:inline">Browse Drive</span>
                               </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Browse and select files from Google Drive</p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                onClick={handleLocalFileInputClick}
+                                size="sm"
+                                variant="outline"
+                                className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 text-xs sm:text-sm"
+                              >
+                                <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                <span className="hidden sm:inline">Local Files</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Select files from your computer</p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 text-xs sm:text-sm">
+                                    <Combine className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">Preview</span>
+                                  </Button>
+                                </DialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Preview all content in unified view</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
+                              <DialogHeader>
+                                <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                              </DialogHeader>
+                              <UnifiedContentView
+                                googleFiles={selectedFiles}
+                                localFiles={localFiles}
+                                pastedText={pastedText}
+                                urls={urls}
+                                userPrompt={userPrompt}
+                                customInstructions={customInstructionsForUnifiedView}
+                                accessToken={accessToken}
+                                isEditable={true}
+                              />
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+
+                        {isMoreButtonsExpanded && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 animate-fade-in">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  onClick={() => {
+                                    handleClearAllFiles();
+                                  }}
+                                  disabled={selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0}
+                                  size="sm"
+                                  variant="outline"
+                                  className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 text-xs sm:text-sm"
+                                >
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                  Clear All
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Clear all files, text, and URLs</p>
+                              </TooltipContent>
+                            </Tooltip>
+
+                            <SavedPrompts
+                              savedPrompts={savedPrompts}
+                              newPromptTitle={newPromptTitle}
+                              setNewPromptTitle={setNewPromptTitle}
+                              newPromptContent={newPromptContent}
+                              setNewPromptContent={setNewPromptContent}
+                              onSavePrompt={handleSavePrompt}
+                              onDeletePrompt={handleDeletePrompt}
+                            />
+                            
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => {
+                                setIsSavedAnalysesOpen(true);
+                              }} 
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 text-xs sm:text-sm"
+                            >
+                              <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">History</span>
+                              <span className="sr-only">View Saved Analyses</span>
+                            </Button>
+                          </div>
+                        )}
+
+                        <div className="flex justify-center">
+                          <Button 
+                            onClick={() => setIsMoreButtonsExpanded(!isMoreButtonsExpanded)}
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200"
+                          >
+                            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isMoreButtonsExpanded ? 'rotate-180' : ''}`} />
+                          </Button>
+                        </div>
                       </div>
                     </TooltipProvider>
                   </div>
