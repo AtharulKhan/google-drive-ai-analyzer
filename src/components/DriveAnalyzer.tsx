@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -140,6 +139,14 @@ export default function DriveAnalyzer() {
       }
     });
   }, [isReady, openPicker, handleAddFiles]);
+
+  const handleClearAllFiles = useCallback(() => {
+    handleClearFiles();
+    setLocalFiles([]);
+    handleClearPastedText();
+    handleClearUrls();
+    toast.success("All files and content cleared");
+  }, [handleClearFiles, handleClearPastedText, handleClearUrls]);
 
   const handleRunAnalysis = useCallback(async () => {
     if (!accessToken && selectedFiles.length > 0) {
@@ -486,14 +493,14 @@ export default function DriveAnalyzer() {
                               onClick={handleBrowseDrive}
                               disabled={!isSignedIn || !isReady}
                               size="sm"
-                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg animate-float text-xs sm:text-sm"
+                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                             >
                               <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Drive</span>
+                              <span className="hidden sm:inline">Browse Drive</span>
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Add Files from Google Drive</p>
+                            <p>Browse and select files from Google Drive</p>
                           </TooltipContent>
                         </Tooltip>
 
@@ -503,14 +510,14 @@ export default function DriveAnalyzer() {
                               onClick={handleLocalFileInputClick}
                               size="sm"
                               variant="outline"
-                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 animate-pulse-slow text-xs sm:text-sm"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 text-xs sm:text-sm"
                             >
                               <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Local</span>
+                              <span className="hidden sm:inline">Local Files</span>
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Select Local Files</p>
+                            <p>Select files from your computer</p>
                           </TooltipContent>
                         </Tooltip>
 
@@ -518,14 +525,14 @@ export default function DriveAnalyzer() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 animate-bounce-subtle text-xs sm:text-sm">
+                                <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 text-xs sm:text-sm">
                                   <Combine className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                                  <span className="hidden sm:inline">View</span>
+                                  <span className="hidden sm:inline">Preview</span>
                                 </Button>
                               </DialogTrigger>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Unified Content View</p>
+                              <p>Preview all content in unified view</p>
                             </TooltipContent>
                           </Tooltip>
                           <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
@@ -548,18 +555,18 @@ export default function DriveAnalyzer() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              onClick={handleClearFiles}
-                              disabled={selectedFiles.length === 0 && localFiles.length === 0}
+                              onClick={handleClearAllFiles}
+                              disabled={selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0}
                               size="sm"
                               variant="outline"
-                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 animate-pulse text-xs sm:text-sm"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 text-xs sm:text-sm"
                             >
                               <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Clear</span>
+                              <span className="hidden sm:inline">Clear All</span>
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Clear All Files</p>
+                            <p>Clear all files, text, and URLs</p>
                           </TooltipContent>
                         </Tooltip>
 
@@ -578,7 +585,7 @@ export default function DriveAnalyzer() {
                             variant="outline" 
                             size="sm" 
                             onClick={() => setIsSavedAnalysesOpen(true)} 
-                            className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 animate-pulse-slow text-xs sm:text-sm"
+                            className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 text-xs sm:text-sm"
                           >
                             <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
                             <span className="hidden sm:inline">History</span>
@@ -600,7 +607,7 @@ export default function DriveAnalyzer() {
                     accessToken={accessToken}
                   />
 
-                  <Separator className="my-4 sm:my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent animate-pulse" />
+                  <Separator className="my-4 sm:my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
 
                   <div className="space-y-4">
                     <PromptSelector
@@ -670,7 +677,7 @@ export default function DriveAnalyzer() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg z-10 relative hover:scale-110 transition-all duration-200 animate-bounce-subtle"
+                                  className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg z-10 relative hover:scale-110 transition-all duration-200"
                                 >
                                   <ChevronDown className="h-4 w-4" />
                                 </Button>
@@ -685,7 +692,7 @@ export default function DriveAnalyzer() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200 animate-pulse"
+                                className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200"
                               >
                                 <ChevronDown className="h-4 w-4 rotate-180" />
                               </Button>
