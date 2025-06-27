@@ -9,13 +9,19 @@ import {
   X,
   Sun,
   Moon,
-  ChevronRight
+  ChevronRight,
+  LogIn,
+  LogOut,
+  History
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const location = useLocation();
+  const { isSignedIn, loading, signIn, signOut } = useGoogleAuth();
   
   // Close mobile menu when route changes
   useEffect(() => {
@@ -114,6 +120,32 @@ const Navbar = () => {
             </Link>
           ))}
         </nav>
+
+        {/* Google Auth Section */}
+        <div className="p-4 border-t border-border space-y-3">
+          {!isSignedIn && !loading && (
+            <Button
+              onClick={signIn}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign in with Google
+            </Button>
+          )}
+          {isSignedIn && (
+            <Button
+              onClick={signOut}
+              variant="outline"
+              className="w-full flex items-center justify-center hover:scale-105 transition-all duration-200 hover:shadow-md"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              <span className="mr-2">Sign Out</span>
+              <div className="w-5 h-5 rounded-full bg-gradient-to-r from-green-400 to-green-500 flex items-center justify-center animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+            </Button>
+          )}
+        </div>
 
         <div className="p-4 border-t border-border">
           <div className="flex items-center space-x-3 px-3 py-2">

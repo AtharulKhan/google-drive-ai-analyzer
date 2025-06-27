@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FolderOpen, Loader2, RefreshCw, Settings, Trash2, Combine, Upload, ChevronDown } from "lucide-react";
+import { FolderOpen, Loader2, RefreshCw, Trash2, Combine, Upload, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useDrivePicker } from "@/hooks/useDrivePicker";
@@ -458,43 +458,12 @@ export default function DriveAnalyzer() {
 
   return (
     <div className="container mx-auto max-w-6xl animate-fade-in">
-      <Card className="w-full shadow-xl border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 backdrop-blur-sm relative overflow-hidden">
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-indigo-400/20 animate-pulse"></div>
+      <Card className="w-full shadow-xl border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 backdrop-blur-sm relative overflow-hidden animate-card-glow">
+        <div className="absolute inset-0 animate-border-pulse"></div>
         <div className="absolute inset-[1px] rounded-lg bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900"></div>
         
         <div className="relative z-10">
           <CardHeader className="border-b border-gradient-to-r from-blue-100/50 to-purple-100/50 dark:from-gray-700/50 dark:to-gray-600/50">
-            <div className="flex items-center justify-between sm:justify-end">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <Link to="/settings">
-                  <Button variant="outline" size="icon" className="hover:scale-105 transition-all duration-200 hover:shadow-md">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </Link>
-
-                {!isSignedIn && !loading && (
-                  <Button
-                    onClick={signIn}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    Sign in with Google
-                  </Button>
-                )}
-                {isSignedIn && (
-                  <Button
-                    onClick={signOut}
-                    variant="outline"
-                    className="flex items-center hover:scale-105 transition-all duration-200 hover:shadow-md"
-                  >
-                    <span className="hidden sm:inline mr-2">Sign Out</span>
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-r from-green-400 to-green-500 flex items-center justify-center animate-pulse">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                  </Button>
-                )}
-              </div>
-            </div>
-            
             <div className="pt-4">
               <TooltipProvider>
                 <div className="flex flex-wrap items-center justify-center gap-3 px-2">
@@ -504,7 +473,7 @@ export default function DriveAnalyzer() {
                         onClick={handleBrowseDrive}
                         disabled={!isSignedIn || !isReady}
                         size="icon"
-                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shrink-0 transform hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
+                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shrink-0 transform hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg animate-float"
                       >
                         <FolderOpen className="h-4 w-4" />
                       </Button>
@@ -520,7 +489,7 @@ export default function DriveAnalyzer() {
                         onClick={handleLocalFileInputClick}
                         size="icon"
                         variant="outline"
-                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50"
+                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 animate-pulse-slow"
                       >
                         <Upload className="h-4 w-4" />
                       </Button>
@@ -534,7 +503,7 @@ export default function DriveAnalyzer() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <DialogTrigger asChild>
-                          <Button size="icon" variant="outline" className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50">
+                          <Button size="icon" variant="outline" className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 animate-bounce-subtle">
                             <Combine className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
@@ -567,7 +536,7 @@ export default function DriveAnalyzer() {
                         disabled={selectedFiles.length === 0 && localFiles.length === 0}
                         size="icon"
                         variant="outline"
-                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50"
+                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 animate-pulse"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -592,7 +561,7 @@ export default function DriveAnalyzer() {
                       variant="outline" 
                       size="icon" 
                       onClick={() => setIsSavedAnalysesOpen(true)} 
-                      className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50"
+                      className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 animate-pulse-slow"
                     >
                       <History className="h-4 w-4" />
                       <span className="sr-only">View Saved Analyses</span>
@@ -605,11 +574,11 @@ export default function DriveAnalyzer() {
 
           <CardContent className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 mb-6 bg-gradient-to-r from-slate-100/80 to-blue-100/60 dark:from-gray-800/80 dark:to-gray-700/60 border border-white/20 backdrop-blur-sm">
-                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white">
+              <TabsList className="grid grid-cols-2 mb-6 bg-gradient-to-r from-slate-100/80 to-blue-100/60 dark:from-gray-800/80 dark:to-gray-700/60 border border-white/20 backdrop-blur-sm animate-fade-in">
+                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white animate-slide-in">
                   Files & Settings
                 </TabsTrigger>
-                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white">
+                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white animate-slide-in-delayed">
                   AI Results
                 </TabsTrigger>
               </TabsList>
@@ -627,7 +596,7 @@ export default function DriveAnalyzer() {
                     accessToken={accessToken}
                   />
 
-                  <Separator className="my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
+                  <Separator className="my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent animate-pulse" />
 
                   <div className="grid gap-4">
                     <PromptSelector
@@ -672,7 +641,7 @@ export default function DriveAnalyzer() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg z-10 relative hover:scale-110 transition-all duration-200"
+                                  className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg z-10 relative hover:scale-110 transition-all duration-200 animate-bounce-subtle"
                                 >
                                   <ChevronDown className="h-4 w-4" />
                                 </Button>
@@ -687,7 +656,7 @@ export default function DriveAnalyzer() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200"
+                                className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200 animate-pulse"
                               >
                                 <ChevronDown className="h-4 w-4 rotate-180" />
                               </Button>
@@ -711,7 +680,7 @@ export default function DriveAnalyzer() {
                         
                         <Separator className="bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
                         
-                        <Card className="border-0 bg-gradient-to-br from-slate-50/50 to-blue-50/30 shadow-md">
+                        <Card className="border-0 bg-gradient-to-br from-slate-50/50 to-blue-50/30 shadow-md animate-slide-up">
                           <CardHeader>
                             <CardTitle className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Text & URL Inputs</CardTitle>
                             <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
@@ -757,7 +726,7 @@ export default function DriveAnalyzer() {
                 (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) ||
                 processingStatus.isProcessing
               }
-              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl animate-glow"
             >
               {processingStatus.isProcessing ? (
                 <>
