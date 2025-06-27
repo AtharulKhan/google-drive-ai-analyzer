@@ -618,29 +618,54 @@ export default function DriveAnalyzer() {
                         
                         {!isAdditionalOptionsOpen && (
                           <div className="relative">
-                            <div className="relative overflow-hidden max-h-20">
-                              <div className="space-y-6 opacity-40 transform scale-95 transition-all duration-300">
+                            <div className="relative overflow-hidden max-h-40 sm:max-h-32">
+                              <div className="space-y-6 opacity-60 transform scale-98 transition-all duration-300">
                                 <div className="grid gap-4">
                                   <div>
-                                    <label className="text-sm font-medium">Webhook URL (Optional)</label>
-                                    <div className="h-10 bg-gradient-to-r from-slate-100/50 to-blue-100/30 rounded-md border border-slate-200/50"></div>
+                                    <label className="text-sm font-medium mb-2 block">Webhook URL (Optional)</label>
+                                    <div className="h-10 bg-gradient-to-r from-slate-100/50 to-blue-100/30 rounded-md border border-slate-200/50 flex items-center px-3">
+                                      <span className="text-xs text-muted-foreground">Send results to external service...</span>
+                                    </div>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                      <label className="text-sm font-medium">AI Model</label>
-                                      <div className="h-10 bg-gradient-to-r from-slate-100/50 to-purple-100/30 rounded-md border border-slate-200/50"></div>
+                                      <label className="text-sm font-medium mb-2 block">AI Model</label>
+                                      <div className="h-10 bg-gradient-to-r from-slate-100/50 to-purple-100/30 rounded-md border border-slate-200/50 flex items-center px-3">
+                                        <span className="text-xs text-muted-foreground">Current: {aiModel}</span>
+                                      </div>
                                     </div>
                                     <div>
-                                      <label className="text-sm font-medium">Max Files</label>
-                                      <div className="h-10 bg-gradient-to-r from-slate-100/50 to-indigo-100/30 rounded-md border border-slate-200/50"></div>
+                                      <label className="text-sm font-medium mb-2 block">Max Files</label>
+                                      <div className="h-10 bg-gradient-to-r from-slate-100/50 to-indigo-100/30 rounded-md border border-slate-200/50 flex items-center px-3">
+                                        <span className="text-xs text-muted-foreground">Limit: {maxFiles} files</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-sm font-medium mb-2 block">Text & URL Input</label>
+                                      <div className="h-16 bg-gradient-to-r from-slate-100/50 to-green-100/30 rounded-md border border-slate-200/50 flex items-center px-3">
+                                        <span className="text-xs text-muted-foreground">
+                                          {pastedText.length > 0 || urls.length > 0 
+                                            ? `${pastedText.length > 0 ? 'Text' : ''}${pastedText.length > 0 && urls.length > 0 ? ' & ' : ''}${urls.length > 0 ? `${urls.length} URL(s)` : ''} added`
+                                            : 'Paste text or add URLs for analysis'
+                                          }
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium mb-2 block">Configuration</label>
+                                      <div className="h-16 bg-gradient-to-r from-slate-100/50 to-orange-100/30 rounded-md border border-slate-200/50 flex items-center px-3">
+                                        <span className="text-xs text-muted-foreground">Advanced settings & options</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
-                              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none"></div>
+                              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none"></div>
                             </div>
                             
-                            <div className="flex justify-center -mt-2">
+                            <div className="flex justify-center -mt-1">
                               <CollapsibleTrigger asChild>
                                 <Button 
                                   variant="ghost" 
