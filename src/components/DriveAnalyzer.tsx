@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -457,134 +458,137 @@ export default function DriveAnalyzer() {
   }, [isUnifiedViewOpen]);
 
   return (
-    <div className="container mx-auto max-w-6xl animate-fade-in">
+    <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-6 animate-fade-in">
       <Card className="w-full shadow-xl border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 backdrop-blur-sm relative overflow-hidden animate-card-glow">
         <div className="absolute inset-0 animate-border-pulse"></div>
         <div className="absolute inset-[1px] rounded-lg bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900"></div>
         
         <div className="relative z-10">
-          <CardHeader className="border-b border-gradient-to-r from-blue-100/50 to-purple-100/50 dark:from-gray-700/50 dark:to-gray-600/50">
-            <div className="pt-4">
-              <TooltipProvider>
-                <div className="flex flex-wrap items-center justify-center gap-3 px-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={handleBrowseDrive}
-                        disabled={!isSignedIn || !isReady}
-                        size="icon"
-                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shrink-0 transform hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg animate-float"
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Add Files from Google Drive</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={handleLocalFileInputClick}
-                        size="icon"
-                        variant="outline"
-                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 animate-pulse-slow"
-                      >
-                        <Upload className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Select Local Files</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DialogTrigger asChild>
-                          <Button size="icon" variant="outline" className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 animate-bounce-subtle">
-                            <Combine className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Unified Content View</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
-                      <DialogHeader>
-                        <DialogTitle>Unified Content View - All Sources</DialogTitle>
-                      </DialogHeader>
-                      <UnifiedContentView
-                        googleFiles={selectedFiles}
-                        localFiles={localFiles}
-                        pastedText={pastedText}
-                        urls={urls}
-                        userPrompt={userPrompt}
-                        customInstructions={customInstructionsForUnifiedView}
-                        accessToken={accessToken}
-                        isEditable={true}
-                      />
-                    </DialogContent>
-                  </Dialog>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={handleClearFiles}
-                        disabled={selectedFiles.length === 0 && localFiles.length === 0}
-                        size="icon"
-                        variant="outline"
-                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 animate-pulse"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Clear All Files</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start w-full sm:w-auto">
-                    <SavedPrompts
-                      savedPrompts={savedPrompts}
-                      newPromptTitle={newPromptTitle}
-                      setNewPromptTitle={setNewPromptTitle}
-                      newPromptContent={newPromptContent}
-                      setNewPromptContent={setNewPromptContent}
-                      onSavePrompt={handleSavePrompt}
-                      onDeletePrompt={handleDeletePrompt}
-                    />
-                    
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => setIsSavedAnalysesOpen(true)} 
-                      className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 animate-pulse-slow"
-                    >
-                      <History className="h-4 w-4" />
-                      <span className="sr-only">View Saved Analyses</span>
-                    </Button>
-                  </div>
-                </div>
-              </TooltipProvider>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-4 lg:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 mb-6 bg-gradient-to-r from-slate-100/80 to-blue-100/60 dark:from-gray-800/80 dark:to-gray-700/60 border border-white/20 backdrop-blur-sm animate-fade-in">
-                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white animate-slide-in">
+              <TabsList className="grid grid-cols-2 mb-4 sm:mb-6 bg-gradient-to-r from-slate-100/80 to-blue-100/60 dark:from-gray-800/80 dark:to-gray-700/60 border border-white/20 backdrop-blur-sm animate-fade-in w-full">
+                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white animate-slide-in text-sm">
                   Files & Settings
                 </TabsTrigger>
-                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white animate-slide-in-delayed">
+                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white animate-slide-in-delayed text-sm">
                   AI Results
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="files" className="animate-fade-in">
-                <div className="space-y-6">
+              <TabsContent value="files" className="animate-fade-in space-y-4 sm:space-y-6">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/20">
+                    <TooltipProvider>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleBrowseDrive}
+                              disabled={!isSignedIn || !isReady}
+                              size="sm"
+                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg animate-float text-xs sm:text-sm"
+                            >
+                              <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Drive</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Add Files from Google Drive</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleLocalFileInputClick}
+                              size="sm"
+                              variant="outline"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 animate-pulse-slow text-xs sm:text-sm"
+                            >
+                              <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Local</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Select Local Files</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <DialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 animate-bounce-subtle text-xs sm:text-sm">
+                                  <Combine className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                  <span className="hidden sm:inline">View</span>
+                                </Button>
+                              </DialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Unified Content View</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
+                            <DialogHeader>
+                              <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                            </DialogHeader>
+                            <UnifiedContentView
+                              googleFiles={selectedFiles}
+                              localFiles={localFiles}
+                              pastedText={pastedText}
+                              urls={urls}
+                              userPrompt={userPrompt}
+                              customInstructions={customInstructionsForUnifiedView}
+                              accessToken={accessToken}
+                              isEditable={true}
+                            />
+                          </DialogContent>
+                        </Dialog>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              onClick={handleClearFiles}
+                              disabled={selectedFiles.length === 0 && localFiles.length === 0}
+                              size="sm"
+                              variant="outline"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 animate-pulse text-xs sm:text-sm"
+                            >
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Clear</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Clear All Files</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <div className="col-span-2 sm:col-span-1 flex gap-2">
+                          <SavedPrompts
+                            savedPrompts={savedPrompts}
+                            newPromptTitle={newPromptTitle}
+                            setNewPromptTitle={setNewPromptTitle}
+                            newPromptContent={newPromptContent}
+                            setNewPromptContent={setNewPromptContent}
+                            onSavePrompt={handleSavePrompt}
+                            onDeletePrompt={handleDeletePrompt}
+                          />
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setIsSavedAnalysesOpen(true)} 
+                            className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 animate-pulse-slow text-xs sm:text-sm"
+                          >
+                            <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">History</span>
+                            <span className="sr-only">View Saved Analyses</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </TooltipProvider>
+                  </div>
+
                   <FileList
                     googleFiles={selectedFiles}
                     localFiles={localFiles}
@@ -596,9 +600,9 @@ export default function DriveAnalyzer() {
                     accessToken={accessToken}
                   />
 
-                  <Separator className="my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent animate-pulse" />
+                  <Separator className="my-4 sm:my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent animate-pulse" />
 
-                  <div className="grid gap-4">
+                  <div className="space-y-4">
                     <PromptSelector
                       userPrompt={userPrompt}
                       onUserPromptChange={handleTextAreaInput}
@@ -665,7 +669,7 @@ export default function DriveAnalyzer() {
                         )}
                       </div>
                       
-                      <CollapsibleContent className="space-y-6 animate-fade-in">
+                      <CollapsibleContent className="space-y-4 sm:space-y-6 animate-fade-in">
                         <ConfigurationOptions
                           aiModel={aiModel}
                           setAiModel={setAiModel}
@@ -681,11 +685,11 @@ export default function DriveAnalyzer() {
                         <Separator className="bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
                         
                         <Card className="border-0 bg-gradient-to-br from-slate-50/50 to-blue-50/30 shadow-md animate-slide-up">
-                          <CardHeader>
-                            <CardTitle className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Text & URL Inputs</CardTitle>
-                            <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
+                          <CardHeader className="p-3 sm:p-6">
+                            <CardTitle className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-lg sm:text-xl">Text & URL Inputs</CardTitle>
+                            <CardDescription className="text-sm">Paste text directly or add URLs to scrape content for analysis.</CardDescription>
                           </CardHeader>
-                          <CardContent>
+                          <CardContent className="p-3 sm:p-6 pt-0">
                             <TextUrlInput
                               pastedText={pastedText}
                               onPastedTextChange={handlePastedTextChange}
@@ -717,7 +721,7 @@ export default function DriveAnalyzer() {
             </Tabs>
           </CardContent>
 
-          <CardFooter className="flex flex-col sm:flex-row gap-4 justify-end border-t border-gradient-to-r from-blue-100/50 to-purple-100/50 dark:from-gray-700/50 dark:to-gray-600/50 p-6">
+          <CardFooter className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end border-t border-gradient-to-r from-blue-100/50 to-purple-100/50 dark:from-gray-700/50 dark:to-gray-600/50 p-3 sm:p-6">
             <Button
               onClick={handleRunAnalysis}
               disabled={
@@ -726,7 +730,7 @@ export default function DriveAnalyzer() {
                 (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) ||
                 processingStatus.isProcessing
               }
-              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl animate-glow"
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl animate-glow text-sm sm:text-base py-2 sm:py-3"
             >
               {processingStatus.isProcessing ? (
                 <>
