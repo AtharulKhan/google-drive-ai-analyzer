@@ -114,168 +114,124 @@
 }
 
 @layer components {
-  /* Enhanced Glass UI components */
+  /* Glass UI components */
   .glass {
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass;
   }
   
   .glass-hover {
-    @apply hover:shadow-glass-hover transition-shadow duration-500;
+    @apply hover:shadow-glass-hover transition-shadow duration-300;
   }
   
   .card-hover {
-    @apply hover:shadow-card-hover transition-all duration-500 ease-in-out transform hover:-translate-y-2 hover:scale-105;
+    @apply hover:shadow-card-hover transition-all duration-300 ease-in-out transform hover:-translate-y-1;
   }
   
-  /* Enhanced Dashboard cards */
+  /* Dashboard cards */
   .dashboard-card {
-    @apply bg-white/90 backdrop-blur-lg rounded-xl shadow-card p-5 border border-border/50 transition-all duration-500 hover:shadow-2xl hover:scale-105;
+    @apply bg-white rounded-xl shadow-card p-5 border border-border/50;
   }
   
-  /* Enhanced Stat cards */
+  /* Stat cards */
   .stat-card {
-    @apply dashboard-card flex flex-col justify-between bg-gradient-to-br from-white to-blue-50 hover:from-blue-50 hover:to-indigo-100;
+    @apply dashboard-card flex flex-col justify-between;
   }
   
   .stat-value {
-    @apply text-2xl font-semibold text-foreground bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+    @apply text-2xl font-semibold text-foreground;
   }
   
   .stat-label {
     @apply text-sm font-medium text-muted-foreground;
   }
   
-  /* Enhanced smooth transitions */
+  /* Smooth transitions */
   .page-transition {
-    @apply transition-all duration-700 ease-in-out;
+    @apply transition-all duration-300 ease-in-out;
   }
   
-  /* Enhanced interactive elements */
+  /* Interactive elements */
   .interactive {
-    @apply transition-all duration-500 hover:brightness-105 active:brightness-95 hover:scale-105;
+    @apply transition-all duration-200 hover:brightness-105 active:brightness-95;
   }
   
-  /* Enhanced navigation links */
+  /* Navigation links */
   .nav-link {
-    @apply relative px-4 py-3 text-foreground/80 rounded-full transition-all duration-300 hover:text-foreground hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 hover:scale-105 hover:shadow-lg;
+    @apply relative px-3 py-2 text-foreground/80 rounded-md transition-colors hover:text-foreground hover:bg-muted;
   }
   
   .nav-link.active {
-    @apply text-primary font-medium bg-gradient-to-r from-primary/10 to-primary/20 shadow-lg scale-105;
+    @apply text-primary font-medium bg-primary/10;
   }
   
-  /* Enhanced drag and drop zone */
+  /* Drag and drop zone */
   .drop-zone {
-    @apply border-2 border-dashed border-border rounded-2xl p-6 text-center cursor-pointer transition-all duration-500 hover:border-primary/50 hover:bg-gradient-to-br hover:from-primary/5 hover:to-primary/10 hover:scale-105 hover:shadow-lg;
+    @apply border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer transition-colors hover:border-primary/50 hover:bg-primary/5;
   }
   
-  /* Enhanced form inputs */
+  /* Form inputs with consistent styling */
   .form-input {
-    @apply rounded-xl border border-input px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all duration-300 hover:shadow-md focus:scale-105;
+    @apply rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
-
-  /* Animated gradient backgrounds */
-  .gradient-bg {
-    @apply bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20;
-    animation: gradient-shift 8s ease-in-out infinite;
-  }
-
-  /* Animated button styles */
-  .btn-gradient {
-    @apply bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 hover:from-blue-600 hover:via-purple-600 hover:to-indigo-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-110 hover:-translate-y-1;
-  }
-
-  /* Staggered animation containers */
-  .stagger-container > * {
-    animation: stagger-fade-in 0.6s ease-out forwards;
-  }
-
-  .stagger-container > *:nth-child(1) { animation-delay: 0.1s; }
-  .stagger-container > *:nth-child(2) { animation-delay: 0.2s; }
-  .stagger-container > *:nth-child(3) { animation-delay: 0.3s; }
-  .stagger-container > *:nth-child(4) { animation-delay: 0.4s; }
-  .stagger-container > *:nth-child(5) { animation-delay: 0.5s; }
 }
 
 @layer utilities {
   /* Custom scrollbar */
   .custom-scrollbar {
-    @apply scrollbar-thin scrollbar-thumb-primary/30 scrollbar-track-transparent hover:scrollbar-thumb-primary/50;
+    @apply scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/30;
   }
   
-  /* Enhanced text gradients */
+  /* Text gradients */
   .text-gradient {
-    @apply bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary to-agri-primary-light bg-clip-text text-transparent;
   }
   
-  .text-gradient-secondary {
-    @apply bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent;
-  }
-  
-  /* Enhanced util for perfect centering */
+  /* Util for perfect centering */
   .center {
     @apply flex items-center justify-center;
   }
   
-  /* Enhanced pill badges */
+  /* Pill badge */
   .badge {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
   
   .badge-primary {
-    @apply badge bg-gradient-to-r from-primary/10 to-primary/20 text-primary hover:from-primary/20 hover:to-primary/30;
+    @apply badge bg-primary/10 text-primary;
   }
   
   .badge-secondary {
-    @apply badge bg-gradient-to-r from-secondary/10 to-secondary/20 text-secondary hover:from-secondary/20 hover:to-secondary/30;
+    @apply badge bg-secondary/10 text-secondary;
   }
   
   .badge-accent {
-    @apply badge bg-gradient-to-r from-accent/10 to-accent/20 text-accent-foreground hover:from-accent/20 hover:to-accent/30;
+    @apply badge bg-accent/10 text-accent-foreground;
   }
   
   .badge-success {
-    @apply badge bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 hover:from-green-200 hover:to-emerald-200;
+    @apply badge bg-agri-success/10 text-agri-success;
   }
   
   .badge-warning {
-    @apply badge bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700 hover:from-yellow-200 hover:to-orange-200;
+    @apply badge bg-agri-warning/10 text-agri-warning;
   }
   
   .badge-danger {
-    @apply badge bg-gradient-to-r from-red-100 to-pink-100 text-red-700 hover:from-red-200 hover:to-pink-200;
-  }
-
-  /* Hover lift effects */
-  .hover-lift {
-    @apply transition-all duration-500 ease-out hover:-translate-y-2 hover:scale-105 hover:shadow-2xl;
-  }
-
-  /* Glow effects */
-  .glow {
-    @apply shadow-lg hover:shadow-2xl hover:shadow-blue-500/25 transition-all duration-500;
-  }
-
-  .glow-purple {
-    @apply shadow-lg hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-500;
-  }
-
-  .glow-green {
-    @apply shadow-lg hover:shadow-2xl hover:shadow-green-500/25 transition-all duration-500;
+    @apply badge bg-agri-danger/10 text-agri-danger;
   }
 }
 
-/* Enhanced smooth transitions for all elements */
+/* Adding smooth transition to all elements */
 * {
-  @apply transition-colors duration-300;
+  @apply transition-colors duration-200;
 }
 
-/* Enhanced responsive adjustments */
+/* Responsive adjustments */
 .container {
   @apply px-4 md:px-6 lg:px-8;
 }
 
-/* Enhanced animation classes */
+/* Animation classes */
 .animate-enter {
   @apply animate-fade-in;
 }
@@ -285,76 +241,5 @@
 }
 
 .hover-lift {
-  @apply transition-transform duration-500 ease-out hover:-translate-y-2 hover:scale-105;
-}
-
-/* Custom keyframe animations */
-@keyframes gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes stagger-fade-in {
-  0% {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.6);
-  }
-}
-
-/* Floating animation */
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-/* Pulse glow animation */
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* Enhanced responsive design */
-@media (max-width: 768px) {
-  .mobile-optimized {
-    @apply px-4 py-2 text-sm;
-  }
-  
-  .mobile-card {
-    @apply rounded-xl p-4 shadow-lg;
-  }
-}
-
-/* Print optimizations */
-@media print {
-  .no-print {
-    @apply hidden;
-  }
-  
-  .print-optimize {
-    @apply shadow-none border border-gray-300;
-  }
+  @apply transition-transform duration-300 ease-out hover:-translate-y-1;
 }
