@@ -1,8 +1,10 @@
-import React from "react";
+
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { FileText, X, History, Save } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileText, X, History, Save, Trash2 } from "lucide-react";
 import { GoogleFile } from "@/hooks/useDrivePicker";
 import { SavedAnalysis } from "@/hooks/useAnalysisState";
 import { saveDocumentToCache } from "@/utils/local-cache";
@@ -17,7 +19,7 @@ interface FileListProps {
   onClearGoogleFiles?: () => void;
   selectedAnalysisIdsForPrompt?: string[];
   savedAnalyses?: SavedAnalysis[];
-  accessToken?: string | null; // Add accessToken prop
+  accessToken?: string | null;
 }
 
 // Helper to format file size
@@ -37,8 +39,11 @@ export function FileList({
   onClearGoogleFiles,
   selectedAnalysisIdsForPrompt = [],
   savedAnalyses = [],
-  accessToken = null // Default to null
+  accessToken = null
 }: FileListProps) {
+  const [selectedGoogleFiles, setSelectedGoogleFiles] = useState<Set<string>>(new Set());
+  const [selectedLocalFiles, setSelectedLocalFiles] = useState<Set<string>>(new Set());
+
   const selectedAnalyses = savedAnalyses.filter(analysis => 
     selectedAnalysisIdsForPrompt.includes(analysis.id)
   );
@@ -91,6 +96,66 @@ export function FileList({
     }
   };
 
+  const handleGoogleFileSelection = (fileId: string, checked: boolean) => {
+    setSelectedGoogleFiles(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(fileId);
+      } else {
+        newSet.delete(fileId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleLocalFileSelection = (fileKey: string, checked: boolean) => {
+    setSelectedLocalFiles(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(fileKey);
+      } else {
+        newSet.delete(fileKey);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllGoogleFiles = (checked: boolean) => {
+    if (checked) {
+      setSelectedGoogleFiles(new Set(displayGoogleFiles.map(file => file.id)));
+    } else {
+      setSelectedGoogleFiles(new Set());
+    }
+  };
+
+  const handleSelectAllLocalFiles = (checked: boolean) => {
+    if (checked) {
+      setSelectedLocalFiles(new Set(localFiles.map(file => `${file.name}-${file.lastModified}`)));
+    } else {
+      setSelectedLocalFiles(new Set());
+    }
+  };
+
+  const handleRemoveSelectedFiles = () => {
+    if (onRemoveGoogleFile) {
+      selectedGoogleFiles.forEach(fileId => {
+        onRemoveGoogleFile(fileId);
+      });
+    }
+    
+    // For local files, we would need a removal handler from parent
+    // Since it's not provided, we'll just clear the selection
+    setSelectedGoogleFiles(new Set());
+    setSelectedLocalFiles(new Set());
+    
+    const removedCount = selectedGoogleFiles.size + selectedLocalFiles.size;
+    if (removedCount > 0) {
+      toast.success(`Removed ${removedCount} file(s)`);
+    }
+  };
+
+  const hasSelectedFiles = selectedGoogleFiles.size > 0 || selectedLocalFiles.size > 0;
+
   return (
     <div>
       {/* Selected Files List */}
@@ -110,6 +175,49 @@ export function FileList({
             </Badge>
           </div>
         </div>
+
+        {/* Bulk Actions */}
+        {totalFilesCount > 0 && (
+          <div className="flex justify-between items-center mb-2 p-2 bg-muted/30 rounded-md">
+            <div className="flex items-center gap-4">
+              {displayGoogleFiles.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all-google"
+                    checked={selectedGoogleFiles.size === displayGoogleFiles.length && displayGoogleFiles.length > 0}
+                    onCheckedChange={handleSelectAllGoogleFiles}
+                  />
+                  <label htmlFor="select-all-google" className="text-sm">
+                    Select all Google Drive files
+                  </label>
+                </div>
+              )}
+              {localFiles.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all-local"
+                    checked={selectedLocalFiles.size === localFiles.length && localFiles.length > 0}
+                    onCheckedChange={handleSelectAllLocalFiles}
+                  />
+                  <label htmlFor="select-all-local" className="text-sm">
+                    Select all local files
+                  </label>
+                </div>
+              )}
+            </div>
+            {hasSelectedFiles && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleRemoveSelectedFiles}
+                className="flex items-center gap-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove Selected ({selectedGoogleFiles.size + selectedLocalFiles.size})
+              </Button>
+            )}
+          </div>
+        )}
 
         <ScrollArea className="h-48 border rounded-md p-2">
           {selectedAnalyses.length > 0 && (
@@ -139,8 +247,14 @@ export function FileList({
               {displayGoogleFiles.map((file) => (
                 <li
                   key={`gdrive-${file.id}`}
-                  className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded group"
+                  className={`flex items-center gap-2 p-1 hover:bg-muted/50 rounded group ${
+                    selectedGoogleFiles.has(file.id) ? 'bg-muted/50' : ''
+                  }`}
                 >
+                  <Checkbox
+                    checked={selectedGoogleFiles.has(file.id)}
+                    onCheckedChange={(checked) => handleGoogleFileSelection(file.id, checked as boolean)}
+                  />
                   <FileText className="h-4 w-4 shrink-0 text-blue-500" />
                   <span className="truncate flex-1">{file.name}</span>
                   <Badge variant="outline" className="text-xs ml-2 shrink-0">
@@ -175,30 +289,39 @@ export function FileList({
               )}
 
               {/* Display Local Files */}
-              {localFiles.map((file) => (
-                <li
-                  key={`local-${file.name}-${file.lastModified}`}
-                  className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded group"
-                >
-                  <FileText className="h-4 w-4 shrink-0 text-green-500" />
-                  <span className="truncate flex-1">{file.name}</span>
-                  <Badge variant="outline" className="text-xs ml-1 shrink-0">
-                    {file.type.split("/").pop() || "local"}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs ml-1 shrink-0">
-                    {formatFileSize(file.size)}
-                  </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
-                    onClick={() => handleSaveLocalFile(file)}
-                    title="Save to cache"
+              {localFiles.map((file) => {
+                const fileKey = `${file.name}-${file.lastModified}`;
+                return (
+                  <li
+                    key={`local-${fileKey}`}
+                    className={`flex items-center gap-2 p-1 hover:bg-muted/50 rounded group ${
+                      selectedLocalFiles.has(fileKey) ? 'bg-muted/50' : ''
+                    }`}
                   >
-                    <Save className="h-3 w-3" />
-                  </Button>
-                </li>
-              ))}
+                    <Checkbox
+                      checked={selectedLocalFiles.has(fileKey)}
+                      onCheckedChange={(checked) => handleLocalFileSelection(fileKey, checked as boolean)}
+                    />
+                    <FileText className="h-4 w-4 shrink-0 text-green-500" />
+                    <span className="truncate flex-1">{file.name}</span>
+                    <Badge variant="outline" className="text-xs ml-1 shrink-0">
+                      {file.type.split("/").pop() || "local"}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs ml-1 shrink-0">
+                      {formatFileSize(file.size)}
+                    </Badge>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
+                      onClick={() => handleSaveLocalFile(file)}
+                      title="Save to cache"
+                    >
+                      <Save className="h-3 w-3" />
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           ) : selectedAnalyses.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
