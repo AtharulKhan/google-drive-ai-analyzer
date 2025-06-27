@@ -26,10 +26,9 @@ import useAnalysisState, {
   SAVED_PROMPTS_KEY,
   SavedPrompt,
   SavedAnalysis,
-  // WEBHOOK_URL_KEY, // Not strictly needed for import, but good for context
 } from "@/hooks/useAnalysisState";
 import { processLocalFiles } from "@/utils/local-file-processor";
-import { sendToWebhook } from "@/utils/webhook-sender"; // Import the new webhook sender
+import { sendToWebhook } from "@/utils/webhook-sender";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +38,6 @@ import {
 } from "@/components/ui/dialog";
 import { UnifiedContentView } from '@/components/common/UnifiedContentView';
 
-// Import our components
 import { FileList } from "./drive-analyzer/FileList";
 import { TextUrlInput } from "./drive-analyzer/TextUrlInput";
 import { SavedPrompts } from "./drive-analyzer/SavedPrompts";
@@ -51,22 +49,17 @@ import { PromptSelector } from "./drive-analyzer/PromptSelector";
 import { AnalysisResults } from "./drive-analyzer/AnalysisResults";
 import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
 
-// Constants
 const MAX_DOC_CHARS = 200000;
 const DEFAULT_MAX_FILES = 20;
 
 export default function DriveAnalyzer() {
-  // Use our custom hook for state management
   const {
-    // Files
     selectedFiles,
     setSelectedFiles,
     displayFiles,
     handleAddFiles,
     handleRemoveFile,
     handleClearFiles,
-    
-    // Text/URL inputs
     pastedText,
     handlePastedTextChange,
     handleClearPastedText,
@@ -76,14 +69,10 @@ export default function DriveAnalyzer() {
     handleAddUrl,
     handleRemoveUrl,
     handleClearUrls,
-    
-    // Crawling options
     crawlingOptions,
     handleCrawlingOptionsChange,
-    webhookUrl, // <<< Add this
-    handleWebhookUrlChange, // <<< Add this
-    
-    // Analysis state
+    webhookUrl,
+    handleWebhookUrlChange,
     userPrompt,
     setUserPrompt,
     aiOutput,
@@ -92,8 +81,6 @@ export default function DriveAnalyzer() {
     setProcessingStatus,
     activeTab,
     setActiveTab,
-    
-    // Saved items
     savedPrompts,
     setSavedPrompts,
     savedAnalyses,
@@ -103,15 +90,12 @@ export default function DriveAnalyzer() {
     handleDeleteAllAnalyses,
     selectedAnalysisIdsForPrompt,
     toggleAnalysisSelectionForPrompt,
-    handleImportAnalysis, // Destructure the new handler
+    handleImportAnalysis,
   } = useAnalysisState();
 
-  // Local state
   const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [isUnifiedViewOpen, setIsUnifiedViewOpen] = useState(false);
   const [isAdditionalOptionsOpen, setIsAdditionalOptionsOpen] = useState(false);
-
-  // State variables
   const [aiModel, setAiModel] = useState<string>(getDefaultAIModel());
   const [maxFiles, setMaxFiles] = useState<number>(DEFAULT_MAX_FILES);
   const [includeSubfolders, setIncludeSubfolders] = useState(true);
@@ -123,16 +107,13 @@ export default function DriveAnalyzer() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [currentAnalysisResultForDownload, setCurrentAnalysisResultForDownload] = useState<SavedAnalysis | null>(null);
 
-  // Hooks
   const { isSignedIn, accessToken, loading, signIn, signOut } = useGoogleAuth();
   const { openPicker, isReady } = useDrivePicker({ accessToken });
 
-  // Handle local file selection
   const handleLocalFilesSelected = useCallback((files: File[]) => {
     setLocalFiles(files);
   }, []);
 
-  // Handle local file input
   const handleLocalFileInputClick = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -146,14 +127,11 @@ export default function DriveAnalyzer() {
     input.click();
   }, [handleLocalFilesSelected]);
 
-  // Handle browsing Google Drive and selecting files
   const handleBrowseDrive = useCallback(() => {
     if (!isReady) {
       toast.error("Google Drive Picker is not ready");
       return;
     }
-
-    // Use the enhanced picker that allows folder navigation and file selection
     openPicker({ multiple: true }, (files) => {
       if (files.length > 0) {
         handleAddFiles(files);
@@ -162,25 +140,8 @@ export default function DriveAnalyzer() {
     });
   }, [isReady, openPicker, handleAddFiles]);
 
-  // Clear currentAnalysisResultForDownload when relevant sources are cleared via useAnalysisState's handleClear functions
-  useEffect(() => {
-    if (selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && aiOutput === "") {
-      setCurrentAnalysisResultForDownload(null);
-    }
-  // Adding aiOutput here because clearing files/text/urls doesn't necessarily mean we want to clear a *completed* analysis output for download
-  // However, if aiOutput itself is cleared (e.g. new analysis starts), then it should be cleared.
-  // A more direct way is to clear it when handleClearAll or specific clear functions in useAnalysisState are called,
-  // but this useEffect provides a safety net. The primary reset point is at the start of handleRunAnalysis.
-  }, [selectedFiles, localFiles, pastedText, urls, aiOutput]);
-
-  // Load custom instructions for unified view
-  const customInstructionsForUnifiedView = React.useMemo(() => {
-    return localStorage.getItem('drive-analyzer-custom-instructions') || '';
-  }, [isUnifiedViewOpen]);
-
-  // Updated process files and send to OpenRouter for analysis with local file support
   const handleRunAnalysis = useCallback(async () => {
-    if (!accessToken && selectedFiles.length > 0) { // Only require accessToken if Drive files are selected
+    if (!accessToken && selectedFiles.length > 0) {
       toast.error("Please sign in to Google Drive to process selected files.");
       return;
     }
@@ -207,21 +168,20 @@ export default function DriveAnalyzer() {
 
     setAiOutput("");
     setActiveTab("result");
-    setCurrentAnalysisResultForDownload(null); // Reset on new analysis run
+    setCurrentAnalysisResultForDownload(null);
 
     try {
       const allContentSources: string[] = [];
       let currentProgress = 0;
       let itemsProcessed = 0;
 
-      // 1. Analyze URLs with Apify (using our new crawling options)
       if (urls.length > 0) {
         itemsProcessed++;
         setProcessingStatus(prev => ({
           ...prev,
           currentStep: `Analyzing ${urls.length} URL(s) with Apify...`,
-          progress: Math.round((itemsProcessed / totalItems) * 15), // Scraping takes up to 15%
-          processedFiles: itemsProcessed - 1, // visually show progress on current item
+          progress: Math.round((itemsProcessed / totalItems) * 15),
+          processedFiles: itemsProcessed - 1,
         }));
         
         const apifyResult = await analyzeMultipleUrlsWithApify(urls, crawlingOptions);
@@ -232,23 +192,21 @@ export default function DriveAnalyzer() {
         if (apifyResult.combinedAnalyzedText.trim() !== "") {
           allContentSources.push(apifyResult.combinedAnalyzedText.trim());
         }
-        currentProgress = 15; // Mark URL analysis as 15% done
+        currentProgress = 15;
       }
 
-      // 2. Process Pasted Text
       if (pastedText.trim() !== "") {
         itemsProcessed++;
         setProcessingStatus(prev => ({
           ...prev,
           currentStep: "Processing pasted text...",
-          progress: currentProgress + Math.round((itemsProcessed / totalItems) * 5), // Pasted text adds up to 5%
+          progress: currentProgress + Math.round((itemsProcessed / totalItems) * 5),
           processedFiles: itemsProcessed - 1,
         }));
         allContentSources.push(`### Pasted Text Content\n\n${pastedText.trim()}`);
-        currentProgress += 5; // Add 5% for pasted text
+        currentProgress += 5;
       }
 
-      // 3. Process Local Files
       if (localFiles.length > 0) {
         setProcessingStatus(prev => ({
           ...prev,
@@ -261,15 +219,14 @@ export default function DriveAnalyzer() {
           const localFileContents = await processLocalFiles(localFiles);
           allContentSources.push(...localFileContents);
           itemsProcessed += localFiles.length;
-          currentProgress += 15; // Local files take up to 15% of progress
+          currentProgress += 15;
         } catch (error) {
           console.error("Error processing local files:", error);
           toast.error(`Error processing local files: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
       
-      // 4. Process Google Drive Files
-      const fileProcessingProgressMax = 45; // Reduced from 60% to account for local files
+      const fileProcessingProgressMax = 45;
       const initialProgressForFiles = currentProgress;
 
       if (selectedFiles.length > 0 && !accessToken) {
@@ -316,8 +273,8 @@ export default function DriveAnalyzer() {
       setProcessingStatus(prev => ({
         ...prev,
         currentStep: "Analyzing with AI...",
-        progress: Math.min(currentProgress + 5, 95), // AI call starts, moves to 95% before completion
-        processedFiles: totalItems, // All source items processed
+        progress: Math.min(currentProgress + 5, 95),
+        processedFiles: totalItems,
       }));
       
       let finalUserPrompt = userPrompt;
@@ -338,7 +295,6 @@ export default function DriveAnalyzer() {
         }
       }
       
-      // Get custom instructions from localStorage instead of state
       const customInstructions = localStorage.getItem('drive-analyzer-custom-instructions') || '';
       const finalPrompt = customInstructions 
         ? `${customInstructions}\n\n${finalUserPrompt}`
@@ -372,15 +328,14 @@ export default function DriveAnalyzer() {
         id: currentTimestamp.toString(),
         title: `Analysis - ${new Date(currentTimestamp).toLocaleString()}`,
         timestamp: currentTimestamp,
-        prompt: userPrompt, // Save the original user prompt, not the augmented one
+        prompt: userPrompt,
         aiOutput: result,
         sources: analysisSources,
       };
 
       handleSaveAnalysis(newAnalysis);
-      setCurrentAnalysisResultForDownload(newAnalysis); // Store for download
+      setCurrentAnalysisResultForDownload(newAnalysis);
 
-      // Send to webhook if URL is configured
       if (webhookUrl && (webhookUrl.startsWith('http://') || webhookUrl.startsWith('https://'))) {
         toast.promise(sendToWebhook(webhookUrl, newAnalysis), {
           loading: "Sending analysis to webhook...",
@@ -388,7 +343,6 @@ export default function DriveAnalyzer() {
             if (result.success) {
               return `Webhook sent successfully to ${webhookUrl}`;
             } else {
-              // This case implies sendToWebhook resolved with { success: false }
               throw new Error(result.error || "Unknown webhook error");
             }
           },
@@ -397,7 +351,7 @@ export default function DriveAnalyzer() {
       }
       
       if (selectedAnalysisIdsForPrompt.length > 0) {
-        selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id)); // This will clear the array
+        selectedAnalysisIdsForPrompt.forEach(id => toggleAnalysisSelectionForPrompt(id));
       }
 
       setTimeout(() => {
@@ -443,7 +397,6 @@ export default function DriveAnalyzer() {
     setActiveTab,
   ]);
 
-  // Handle saving a new prompt
   const handleSavePrompt = useCallback(() => {
     if (!newPromptTitle.trim() || !newPromptContent.trim()) {
       toast.error("Both title and content are required for saving a prompt");
@@ -467,7 +420,6 @@ export default function DriveAnalyzer() {
     toast.success(`Prompt "${newPromptTitle}" saved successfully`);
   }, [newPromptTitle, newPromptContent, savedPrompts, setSavedPrompts]);
 
-  // Handle deleting a saved prompt
   const handleDeletePrompt = useCallback((id: string) => {
     const updatedPrompts = savedPrompts.filter(prompt => prompt.id !== id);
     setSavedPrompts(updatedPrompts);
@@ -475,13 +427,11 @@ export default function DriveAnalyzer() {
     toast.success("Prompt deleted");
   }, [savedPrompts, setSavedPrompts]);
 
-  // Handle inserting a prompt into the text area
   const handleInsertPrompt = useCallback((prompt: SavedPrompt) => {
     setUserPrompt(prompt.content);
     setIsPromptCommandOpen(false);
   }, [setUserPrompt]);
 
-  // Handle text area input to check for trigger characters
   const handleTextAreaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setUserPrompt(value);
@@ -496,325 +446,336 @@ export default function DriveAnalyzer() {
     setViewingAnalysis(analysis);
   }, []);
 
+  useEffect(() => {
+    if (selectedFiles.length === 0 && localFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && aiOutput === "") {
+      setCurrentAnalysisResultForDownload(null);
+    }
+  }, [selectedFiles, localFiles, pastedText, urls, aiOutput]);
+
+  const customInstructionsForUnifiedView = React.useMemo(() => {
+    return localStorage.getItem('drive-analyzer-custom-instructions') || '';
+  }, [isUnifiedViewOpen]);
+
   return (
-    <div className="container mx-auto p-4 max-w-6xl">
-      <Card className="w-full shadow-lg">
-        <CardHeader>
-          <div className="flex items-center justify-between sm:justify-end">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <Link to="/settings">
-                <Button variant="outline" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </Link>
+    <div className="container mx-auto max-w-6xl animate-fade-in">
+      <Card className="w-full shadow-xl border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 backdrop-blur-sm relative overflow-hidden">
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-indigo-400/20 animate-pulse"></div>
+        <div className="absolute inset-[1px] rounded-lg bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900"></div>
+        
+        <div className="relative z-10">
+          <CardHeader className="border-b border-gradient-to-r from-blue-100/50 to-purple-100/50 dark:from-gray-700/50 dark:to-gray-600/50">
+            <div className="flex items-center justify-between sm:justify-end">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Link to="/settings">
+                  <Button variant="outline" size="icon" className="hover:scale-105 transition-all duration-200 hover:shadow-md">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
 
-              {!isSignedIn && !loading && (
-                <Button
-                  onClick={signIn}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  Sign in with Google
-                </Button>
-              )}
-              {isSignedIn && (
-                <Button
-                  onClick={signOut}
-                  variant="outline"
-                  className="flex items-center"
-                >
-                  <span className="hidden sm:inline mr-2">Sign Out</span>
-                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  </div>
-                </Button>
-              )}
+                {!isSignedIn && !loading && (
+                  <Button
+                    onClick={signIn}
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    Sign in with Google
+                  </Button>
+                )}
+                {isSignedIn && (
+                  <Button
+                    onClick={signOut}
+                    variant="outline"
+                    className="flex items-center hover:scale-105 transition-all duration-200 hover:shadow-md"
+                  >
+                    <span className="hidden sm:inline mr-2">Sign Out</span>
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-r from-green-400 to-green-500 flex items-center justify-center animate-pulse">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-          
-          {/* Moved buttons below the title */}
-          <div className="pt-4">
-            <TooltipProvider>
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={handleBrowseDrive}
-                      disabled={!isSignedIn || !isReady}
-                      size="icon"
-                      className="bg-green-600 hover:bg-green-700 text-white shrink-0"
-                    >
-                      <FolderOpen className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Add Files from Google Drive</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={handleLocalFileInputClick}
-                      size="icon"
-                      variant="outline"
-                      className="shrink-0"
-                    >
-                      <Upload className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Select Local Files</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+            
+            <div className="pt-4">
+              <TooltipProvider>
+                <div className="flex flex-wrap items-center justify-center gap-3 px-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <DialogTrigger asChild>
-                        <Button size="icon" variant="outline" className="shrink-0">
-                          <Combine className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
+                      <Button
+                        onClick={handleBrowseDrive}
+                        disabled={!isSignedIn || !isReady}
+                        size="icon"
+                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shrink-0 transform hover:scale-110 transition-all duration-200 shadow-md hover:shadow-lg"
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Unified Content View</p>
+                      <p>Add Files from Google Drive</p>
                     </TooltipContent>
                   </Tooltip>
-                  <DialogContent className="max-w-5xl h-[80vh]">
-                    <DialogHeader>
-                      <DialogTitle>Unified Content View - All Sources</DialogTitle>
-                    </DialogHeader>
-                    <UnifiedContentView
-                      googleFiles={selectedFiles}
-                      localFiles={localFiles}
-                      pastedText={pastedText}
-                      urls={urls}
-                      userPrompt={userPrompt}
-                      customInstructions={customInstructionsForUnifiedView}
-                      accessToken={accessToken}
-                      isEditable={true}
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleLocalFileInputClick}
+                        size="icon"
+                        variant="outline"
+                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50"
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Select Local Files</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Dialog open={isUnifiedViewOpen} onOpenChange={setIsUnifiedViewOpen}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DialogTrigger asChild>
+                          <Button size="icon" variant="outline" className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50">
+                            <Combine className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Unified Content View</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
+                      <DialogHeader>
+                        <DialogTitle>Unified Content View - All Sources</DialogTitle>
+                      </DialogHeader>
+                      <UnifiedContentView
+                        googleFiles={selectedFiles}
+                        localFiles={localFiles}
+                        pastedText={pastedText}
+                        urls={urls}
+                        userPrompt={userPrompt}
+                        customInstructions={customInstructionsForUnifiedView}
+                        accessToken={accessToken}
+                        isEditable={true}
+                      />
+                    </DialogContent>
+                  </Dialog>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleClearFiles}
+                        disabled={selectedFiles.length === 0 && localFiles.length === 0}
+                        size="icon"
+                        variant="outline"
+                        className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Clear All Files</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start w-full sm:w-auto">
+                    <SavedPrompts
+                      savedPrompts={savedPrompts}
+                      newPromptTitle={newPromptTitle}
+                      setNewPromptTitle={setNewPromptTitle}
+                      newPromptContent={newPromptContent}
+                      setNewPromptContent={setNewPromptContent}
+                      onSavePrompt={handleSavePrompt}
+                      onDeletePrompt={handleDeletePrompt}
                     />
-                  </DialogContent>
-                </Dialog>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={handleClearFiles}
-                      disabled={selectedFiles.length === 0 && localFiles.length === 0}
-                      size="icon"
-                      variant="outline"
-                      className="shrink-0"
+                    
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => setIsSavedAnalysesOpen(true)} 
+                      className="shrink-0 hover:scale-110 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <History className="h-4 w-4" />
+                      <span className="sr-only">View Saved Analyses</span>
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Clear All Files</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Mobile responsive button group */}
-                <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start w-full sm:w-auto">
-                  <SavedPrompts
-                    savedPrompts={savedPrompts}
-                    newPromptTitle={newPromptTitle}
-                    setNewPromptTitle={setNewPromptTitle}
-                    newPromptContent={newPromptContent}
-                    setNewPromptContent={setNewPromptContent}
-                    onSavePrompt={handleSavePrompt}
-                    onDeletePrompt={handleDeletePrompt}
-                  />
-                  
-                  <Button variant="outline" size="icon" onClick={() => setIsSavedAnalysesOpen(true)} className="shrink-0">
-                    <History className="h-4 w-4" />
-                    <span className="sr-only">View Saved Analyses</span>
-                  </Button>
+                  </div>
                 </div>
-              </div>
-            </TooltipProvider>
-          </div>
-        </CardHeader>
+              </TooltipProvider>
+            </div>
+          </CardHeader>
 
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="files">Files & Settings</TabsTrigger>
-              <TabsTrigger value="result">AI Results</TabsTrigger>
-            </TabsList>
+          <CardContent className="p-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid grid-cols-2 mb-6 bg-gradient-to-r from-slate-100/80 to-blue-100/60 dark:from-gray-800/80 dark:to-gray-700/60 border border-white/20 backdrop-blur-sm">
+                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white">
+                  Files & Settings
+                </TabsTrigger>
+                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white">
+                  AI Results
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="files">
-              <div className="space-y-6">
-                {/* File List Component - now with accessToken */}
-                <FileList
-                  googleFiles={selectedFiles}
-                  localFiles={localFiles}
-                  displayFiles={displayFiles}
-                  onRemoveGoogleFile={handleRemoveFile}
-                  onClearGoogleFiles={handleClearFiles}
-                  selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
-                  savedAnalyses={savedAnalyses}
-                  accessToken={accessToken}
-                />
-
-                <Separator className="my-6" />
-
-                {/* Prompt and Configuration Section */}
-                <div className="grid gap-4">
-                  {/* Prompt Selector Component */}
-                  <PromptSelector
-                    userPrompt={userPrompt}
-                    onUserPromptChange={handleTextAreaInput}
-                    isPromptCommandOpen={isPromptCommandOpen}
-                    savedPrompts={savedPrompts}
-                    onInsertPrompt={handleInsertPrompt}
-                    textareaRef={textareaRef}
+              <TabsContent value="files" className="animate-fade-in">
+                <div className="space-y-6">
+                  <FileList
+                    googleFiles={selectedFiles}
+                    localFiles={localFiles}
+                    displayFiles={displayFiles}
+                    onRemoveGoogleFile={handleRemoveFile}
+                    onClearGoogleFiles={handleClearFiles}
+                    selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
+                    savedAnalyses={savedAnalyses}
+                    accessToken={accessToken}
                   />
 
-                  {/* Additional Options with improved fade and centered arrow */}
-                  <Collapsible open={isAdditionalOptionsOpen} onOpenChange={setIsAdditionalOptionsOpen}>
-                    <div className="space-y-4">
-                      {/* Header */}
-                      <h3 className="text-sm font-medium text-muted-foreground">Additional Options</h3>
-                      
-                      {/* Fade preview when closed */}
-                      {!isAdditionalOptionsOpen && (
-                        <div className="relative">
-                          <div className="relative overflow-hidden max-h-20">
-                            <div className="space-y-6 opacity-50">
-                              {/* Preview of Configuration Options */}
-                              <div className="grid gap-4">
-                                <div>
-                                  <label className="text-sm font-medium">Webhook URL (Optional, Saved Automatically)</label>
-                                  <div className="h-10 bg-muted/30 rounded-md border"></div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Separator className="my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
+
+                  <div className="grid gap-4">
+                    <PromptSelector
+                      userPrompt={userPrompt}
+                      onUserPromptChange={handleTextAreaInput}
+                      isPromptCommandOpen={isPromptCommandOpen}
+                      savedPrompts={savedPrompts}
+                      onInsertPrompt={handleInsertPrompt}
+                      textareaRef={textareaRef}
+                    />
+
+                    <Collapsible open={isAdditionalOptionsOpen} onOpenChange={setIsAdditionalOptionsOpen}>
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-medium text-muted-foreground">Additional Options</h3>
+                        
+                        {!isAdditionalOptionsOpen && (
+                          <div className="relative">
+                            <div className="relative overflow-hidden max-h-20">
+                              <div className="space-y-6 opacity-40 transform scale-95 transition-all duration-300">
+                                <div className="grid gap-4">
                                   <div>
-                                    <label className="text-sm font-medium">AI Model</label>
-                                    <div className="h-10 bg-muted/30 rounded-md border"></div>
+                                    <label className="text-sm font-medium">Webhook URL (Optional)</label>
+                                    <div className="h-10 bg-gradient-to-r from-slate-100/50 to-blue-100/30 rounded-md border border-slate-200/50"></div>
                                   </div>
-                                  <div>
-                                    <label className="text-sm font-medium">Max Files</label>
-                                    <div className="h-10 bg-muted/30 rounded-md border"></div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-sm font-medium">AI Model</label>
+                                      <div className="h-10 bg-gradient-to-r from-slate-100/50 to-purple-100/30 rounded-md border border-slate-200/50"></div>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium">Max Files</label>
+                                      <div className="h-10 bg-gradient-to-r from-slate-100/50 to-indigo-100/30 rounded-md border border-slate-200/50"></div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
+                              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none"></div>
                             </div>
-                            {/* Fade gradient overlay */}
-                            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>
+                            
+                            <div className="flex justify-center -mt-2">
+                              <CollapsibleTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg z-10 relative hover:scale-110 transition-all duration-200"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
                           </div>
-                          
-                          {/* Centered arrow trigger at bottom */}
-                          <div className="flex justify-center -mt-2">
+                        )}
+                        
+                        {isAdditionalOptionsOpen && (
+                          <div className="flex justify-center">
                             <CollapsibleTrigger asChild>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                className="h-8 w-8 rounded-full bg-background border shadow-sm hover:bg-muted z-10 relative"
+                                className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200"
                               >
-                                <ChevronDown className="h-4 w-4" />
+                                <ChevronDown className="h-4 w-4 rotate-180" />
                               </Button>
                             </CollapsibleTrigger>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                       
-                      {/* Collapse trigger when open */}
-                      {isAdditionalOptionsOpen && (
-                        <div className="flex justify-center">
-                          <CollapsibleTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="h-8 w-8 rounded-full bg-background border shadow-sm hover:bg-muted"
-                            >
-                              <ChevronDown className="h-4 w-4 rotate-180" />
-                            </Button>
-                          </CollapsibleTrigger>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <CollapsibleContent className="space-y-6">
-                      {/* Configuration Options */}
-                      <ConfigurationOptions
-                        aiModel={aiModel}
-                        setAiModel={setAiModel}
-                        maxFiles={maxFiles}
-                        setMaxFiles={setMaxFiles}
-                        includeSubfolders={includeSubfolders}
-                        setIncludeSubfolders={setIncludeSubfolders}
-                        maxDocChars={MAX_DOC_CHARS}
-                        webhookUrl={webhookUrl}
-                        handleWebhookUrlChange={handleWebhookUrlChange}
-                      />
-                      
-                      <Separator />
-                      
-                      {/* Text & URL Inputs */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Text & URL Inputs</CardTitle>
-                          <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <TextUrlInput
-                            pastedText={pastedText}
-                            onPastedTextChange={handlePastedTextChange}
-                            urls={urls}
-                            onUrlAdd={handleAddUrl}
-                            onUrlRemove={handleRemoveUrl}
-                            onClearPastedText={handleClearPastedText}
-                            onClearUrls={handleClearUrls}
-                            currentUrlInput={currentUrlInput}
-                            onCurrentUrlInputChange={setCurrentUrlInput}
-                            crawlingOptions={crawlingOptions}
-                            onCrawlingOptionsChange={handleCrawlingOptionsChange}
-                          />
-                        </CardContent>
-                      </Card>
-                    </CollapsibleContent>
-                  </Collapsible>
+                      <CollapsibleContent className="space-y-6 animate-fade-in">
+                        <ConfigurationOptions
+                          aiModel={aiModel}
+                          setAiModel={setAiModel}
+                          maxFiles={maxFiles}
+                          setMaxFiles={setMaxFiles}
+                          includeSubfolders={includeSubfolders}
+                          setIncludeSubfolders={setIncludeSubfolders}
+                          maxDocChars={MAX_DOC_CHARS}
+                          webhookUrl={webhookUrl}
+                          handleWebhookUrlChange={handleWebhookUrlChange}
+                        />
+                        
+                        <Separator className="bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
+                        
+                        <Card className="border-0 bg-gradient-to-br from-slate-50/50 to-blue-50/30 shadow-md">
+                          <CardHeader>
+                            <CardTitle className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Text & URL Inputs</CardTitle>
+                            <CardDescription>Paste text directly or add URLs to scrape content for analysis.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <TextUrlInput
+                              pastedText={pastedText}
+                              onPastedTextChange={handlePastedTextChange}
+                              urls={urls}
+                              onUrlAdd={handleAddUrl}
+                              onUrlRemove={handleRemoveUrl}
+                              onClearPastedText={handleClearPastedText}
+                              onClearUrls={handleClearUrls}
+                              currentUrlInput={currentUrlInput}
+                              onCurrentUrlInputChange={setCurrentUrlInput}
+                              crawlingOptions={crawlingOptions}
+                              onCrawlingOptionsChange={handleCrawlingOptionsChange}
+                            />
+                          </CardContent>
+                        </Card>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                 </div>
+              </TabsContent>
 
-              </div>
-            </TabsContent>
+              <TabsContent value="result" className="animate-fade-in">
+                <AnalysisResults 
+                  processingStatus={processingStatus}
+                  aiOutput={aiOutput}
+                  currentAnalysisResult={currentAnalysisResultForDownload}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
 
-            <TabsContent value="result">
-              {/* Analysis Results Component */}
-              <AnalysisResults 
-                processingStatus={processingStatus}
-                aiOutput={aiOutput}
-                currentAnalysisResult={currentAnalysisResultForDownload} // Pass for download
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
+          <CardFooter className="flex flex-col sm:flex-row gap-4 justify-end border-t border-gradient-to-r from-blue-100/50 to-purple-100/50 dark:from-gray-700/50 dark:to-gray-600/50 p-6">
+            <Button
+              onClick={handleRunAnalysis}
+              disabled={
+                (!isSignedIn && selectedFiles.length > 0) ||
+                (!isReady && selectedFiles.length > 0) ||
+                (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) ||
+                processingStatus.isProcessing
+              }
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              {processingStatus.isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Run AI Analysis
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </div>
 
-        <CardFooter className="flex flex-col sm:flex-row gap-4 justify-end border-t p-4">
-          <Button
-            onClick={handleRunAnalysis}
-            disabled={
-              (!isSignedIn && selectedFiles.length > 0) ||
-              (!isReady && selectedFiles.length > 0) ||
-              (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) ||
-              processingStatus.isProcessing
-            }
-            className="w-full sm:w-auto"
-          >
-            {processingStatus.isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Run AI Analysis
-              </>
-            )}
-          </Button>
-        </CardFooter>
+        <div className="absolute top-4 right-4 w-2 h-2 bg-blue-400/30 rounded-full animate-pulse"></div>
+        <div className="absolute bottom-4 left-4 w-1 h-1 bg-purple-400/30 rounded-full animate-pulse delay-1000"></div>
       </Card>
 
       <SavedAnalysesSidebar
@@ -827,7 +788,7 @@ export default function DriveAnalyzer() {
         onDeleteAllAnalyses={handleDeleteAllAnalyses}
         selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
         toggleAnalysisSelectionForPrompt={toggleAnalysisSelectionForPrompt}
-        onImportAnalysis={handleImportAnalysis} // Pass as prop
+        onImportAnalysis={handleImportAnalysis}
       />
 
       {viewingAnalysis && (
@@ -839,7 +800,7 @@ export default function DriveAnalyzer() {
             }
           }}
         >
-          <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col animate-scale-in">
             <DialogHeader>
               <DialogTitle>{viewingAnalysis.title}</DialogTitle>
             </DialogHeader>

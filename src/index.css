@@ -114,6 +114,23 @@
 }
 
 @layer components {
+  /* Enhanced animations */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+  
+  .animate-border-pulse {
+    animation: borderPulse 2s ease-in-out infinite;
+  }
+  
   /* Glass UI components */
   .glass {
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass;
@@ -221,7 +238,50 @@
   }
 }
 
-/* Adding smooth transition to all elements */
+/* Keyframe animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes borderPulse {
+  0%, 100% {
+    border-color: rgb(99 102 241 / 0.2);
+  }
+  50% {
+    border-color: rgb(139 92 246 / 0.4);
+  }
+}
+
+/* Enhanced smooth transitions for all elements */
 * {
   @apply transition-colors duration-200;
 }
@@ -242,4 +302,15 @@
 
 .hover-lift {
   @apply transition-transform duration-300 ease-out hover:-translate-y-1;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .container {
+    @apply px-0;
+  }
+  
+  .mobile-edge-to-edge {
+    @apply mx-0 px-0 rounded-none;
+  }
 }
