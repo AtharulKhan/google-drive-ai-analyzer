@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -140,6 +139,12 @@ export default function DriveAnalyzer() {
       }
     });
   }, [isReady, openPicker, handleAddFiles]);
+
+  const handleClearAllFiles = useCallback(() => {
+    handleClearFiles();
+    setLocalFiles([]);
+    toast.success("All files cleared");
+  }, [handleClearFiles]);
 
   const handleRunAnalysis = useCallback(async () => {
     if (!accessToken && selectedFiles.length > 0) {
@@ -459,18 +464,18 @@ export default function DriveAnalyzer() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-6 animate-fade-in">
-      <Card className="w-full shadow-xl border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 backdrop-blur-sm relative overflow-hidden animate-card-glow">
-        <div className="absolute inset-0 animate-border-pulse"></div>
+      <Card className="w-full shadow-xl border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 backdrop-blur-sm relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-indigo-500/5 opacity-50"></div>
         <div className="absolute inset-[1px] rounded-lg bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900"></div>
         
         <div className="relative z-10">
           <CardContent className="p-3 sm:p-4 lg:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-2 mb-4 sm:mb-6 bg-gradient-to-r from-slate-100/80 to-blue-100/60 dark:from-gray-800/80 dark:to-gray-700/60 border border-white/20 backdrop-blur-sm animate-fade-in w-full">
-                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white animate-slide-in text-sm">
+                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white text-sm">
                   Files & Settings
                 </TabsTrigger>
-                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white animate-slide-in-delayed text-sm">
+                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white text-sm">
                   AI Results
                 </TabsTrigger>
               </TabsList>
@@ -486,14 +491,15 @@ export default function DriveAnalyzer() {
                               onClick={handleBrowseDrive}
                               disabled={!isSignedIn || !isReady}
                               size="sm"
-                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg animate-float text-xs sm:text-sm"
+                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                             >
                               <FolderOpen className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Drive</span>
+                              <span className="hidden sm:inline">Browse Drive</span>
+                              <span className="sm:hidden">Drive</span>
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Add Files from Google Drive</p>
+                            <p>Browse and select files from Google Drive</p>
                           </TooltipContent>
                         </Tooltip>
 
@@ -503,14 +509,15 @@ export default function DriveAnalyzer() {
                               onClick={handleLocalFileInputClick}
                               size="sm"
                               variant="outline"
-                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 animate-pulse-slow text-xs sm:text-sm"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/50 text-xs sm:text-sm"
                             >
                               <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Local</span>
+                              <span className="hidden sm:inline">Upload Local</span>
+                              <span className="sm:hidden">Local</span>
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Select Local Files</p>
+                            <p>Upload files from your computer</p>
                           </TooltipContent>
                         </Tooltip>
 
@@ -518,17 +525,18 @@ export default function DriveAnalyzer() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 animate-bounce-subtle text-xs sm:text-sm">
+                                <Button size="sm" variant="outline" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-purple-50/50 text-xs sm:text-sm">
                                   <Combine className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                                  <span className="hidden sm:inline">View</span>
+                                  <span className="hidden sm:inline">Unified View</span>
+                                  <span className="sm:hidden">View</span>
                                 </Button>
                               </DialogTrigger>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Unified Content View</p>
+                              <p>View all content in one place</p>
                             </TooltipContent>
                           </Tooltip>
-                          <DialogContent className="max-w-5xl h-[80vh] animate-scale-in">
+                          <DialogContent className="max-w-5xl h-[80vh]">
                             <DialogHeader>
                               <DialogTitle>Unified Content View - All Sources</DialogTitle>
                             </DialogHeader>
@@ -548,18 +556,19 @@ export default function DriveAnalyzer() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              onClick={handleClearFiles}
+                              onClick={handleClearAllFiles}
                               disabled={selectedFiles.length === 0 && localFiles.length === 0}
                               size="sm"
                               variant="outline"
-                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 animate-pulse text-xs sm:text-sm"
+                              className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 text-xs sm:text-sm"
                             >
                               <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                              <span className="hidden sm:inline">Clear</span>
+                              <span className="hidden sm:inline">Clear All</span>
+                              <span className="sm:hidden">Clear</span>
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Clear All Files</p>
+                            <p>Remove all selected files</p>
                           </TooltipContent>
                         </Tooltip>
 
@@ -578,10 +587,10 @@ export default function DriveAnalyzer() {
                             variant="outline" 
                             size="sm" 
                             onClick={() => setIsSavedAnalysesOpen(true)} 
-                            className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 animate-pulse-slow text-xs sm:text-sm"
+                            className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 text-xs sm:text-sm"
                           >
                             <History className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">History</span>
+                            <span className="hidden sm:inline">Analysis History</span>
                             <span className="sr-only">View Saved Analyses</span>
                           </Button>
                         </div>
@@ -600,7 +609,7 @@ export default function DriveAnalyzer() {
                     accessToken={accessToken}
                   />
 
-                  <Separator className="my-4 sm:my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent animate-pulse" />
+                  <Separator className="my-4 sm:my-6 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
 
                   <div className="space-y-4">
                     <PromptSelector
@@ -670,7 +679,7 @@ export default function DriveAnalyzer() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg z-10 relative hover:scale-110 transition-all duration-200 animate-bounce-subtle"
+                                  className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg z-10 relative hover:scale-110 transition-all duration-200"
                                 >
                                   <ChevronDown className="h-4 w-4" />
                                 </Button>
@@ -685,7 +694,7 @@ export default function DriveAnalyzer() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200 animate-pulse"
+                                className="h-8 w-8 rounded-full bg-gradient-to-r from-white to-slate-50 border shadow-md hover:shadow-lg hover:scale-110 transition-all duration-200"
                               >
                                 <ChevronDown className="h-4 w-4 rotate-180" />
                               </Button>
@@ -709,7 +718,7 @@ export default function DriveAnalyzer() {
                         
                         <Separator className="bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
                         
-                        <Card className="border-0 bg-gradient-to-br from-slate-50/50 to-blue-50/30 shadow-md animate-slide-up">
+                        <Card className="border-0 bg-gradient-to-br from-slate-50/50 to-blue-50/30 shadow-md">
                           <CardHeader className="p-3 sm:p-6">
                             <CardTitle className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent text-lg sm:text-xl">Text & URL Inputs</CardTitle>
                             <CardDescription className="text-sm">Paste text directly or add URLs to scrape content for analysis.</CardDescription>
@@ -755,7 +764,7 @@ export default function DriveAnalyzer() {
                 (selectedFiles.length === 0 && pastedText.trim() === "" && urls.length === 0 && localFiles.length === 0) ||
                 processingStatus.isProcessing
               }
-              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl animate-glow text-sm sm:text-base py-2 sm:py-3"
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base py-2 sm:py-3"
             >
               {processingStatus.isProcessing ? (
                 <>
@@ -772,8 +781,8 @@ export default function DriveAnalyzer() {
           </CardFooter>
         </div>
 
-        <div className="absolute top-4 right-4 w-2 h-2 bg-blue-400/30 rounded-full animate-pulse"></div>
-        <div className="absolute bottom-4 left-4 w-1 h-1 bg-purple-400/30 rounded-full animate-pulse delay-1000"></div>
+        <div className="absolute top-4 right-4 w-2 h-2 bg-blue-400/30 rounded-full"></div>
+        <div className="absolute bottom-4 left-4 w-1 h-1 bg-purple-400/30 rounded-full"></div>
       </Card>
 
       <SavedAnalysesSidebar
@@ -798,7 +807,7 @@ export default function DriveAnalyzer() {
             }
           }}
         >
-          <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col animate-scale-in">
+          <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>{viewingAnalysis.title}</DialogTitle>
             </DialogHeader>
