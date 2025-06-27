@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'drive-ai-analyzer-v1';
+const CACHE_NAME = 'drive-ai-analyzer-v2'; // Increment version
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
@@ -9,6 +9,9 @@ const urlsToCache = [
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
+  // Skip waiting to activate the new service worker immediately
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -24,13 +27,15 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         // Return cached version or fetch from network
         return response || fetch(event.request);
-      }
-    )
+      })
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and take control
 self.addEventListener('activate', (event) => {
+  // Take control of all clients immediately
+  self.clients.claim();
+  
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -42,4 +47,11 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+});
+
+// Listen for messages from the main thread
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
