@@ -1,8 +1,7 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, FileText, Download } from "lucide-react"; // Added Download icon
+import { Copy, FileText, Download, RefreshCw } from "lucide-react"; // Added Download and RefreshCw icons
 import { toast } from "sonner";
 import { ProcessingStatus } from "./ProcessingStatus";
 import { SavedAnalysis } from "@/hooks/useAnalysisState"; // Import SavedAnalysis type
@@ -51,14 +50,16 @@ export function AnalysisResults({ processingStatus, aiOutput, currentAnalysisRes
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {processingStatus.isProcessing && (
-        <ProcessingStatus status={processingStatus} />
+        <div className="animate-slide-in-up">
+          <ProcessingStatus status={processingStatus} />
+        </div>
       )}
 
       {aiOutput ? (
-        <div className="relative">
-          <div className="absolute top-2 right-2 z-10 flex gap-2">
+        <div className="relative animate-expand-fade-in">
+          <div className="absolute top-3 right-3 z-10 flex gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -66,7 +67,7 @@ export function AnalysisResults({ processingStatus, aiOutput, currentAnalysisRes
                 navigator.clipboard.writeText(aiOutput);
                 toast.success("Results copied to clipboard");
               }}
-              className="text-xs md:text-sm"
+              className="text-xs md:text-sm backdrop-soft hover:shadow-glow"
             >
               <Copy className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
               Copy
@@ -75,10 +76,10 @@ export function AnalysisResults({ processingStatus, aiOutput, currentAnalysisRes
               size="sm"
               variant="outline"
               onClick={handleViewMarkdown}
-              className="text-xs md:text-sm"
+              className="text-xs md:text-sm backdrop-soft hover:shadow-glow"
             >
               <FileText className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-              View Markdown
+              View
             </Button>
             {currentAnalysisResult && !processingStatus.isProcessing && aiOutput && (
               <Button
@@ -91,15 +92,15 @@ export function AnalysisResults({ processingStatus, aiOutput, currentAnalysisRes
                     toast.success("Downloaded analysis as JSON");
                   }
                 }}
-                className="text-xs md:text-sm"
+                className="text-xs md:text-sm backdrop-soft hover:shadow-glow"
               >
                 <Download className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                Download JSON
+                JSON
               </Button>
             )}
           </div>
-          <ScrollArea className="border rounded-md p-2 md:p-4 h-[450px] md:h-[500px]">
-            <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap px-2 pt-10 md:pt-8 md:px-4">
+          <ScrollArea className="gradient-card border rounded-xl p-2 md:p-4 h-[450px] md:h-[500px] custom-scrollbar">
+            <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap px-2 pt-12 md:pt-10 md:px-4">
               {aiOutput.split("\n").map((line, i) => (
                 <React.Fragment key={i}>
                   {line}
@@ -110,15 +111,24 @@ export function AnalysisResults({ processingStatus, aiOutput, currentAnalysisRes
           </ScrollArea>
         </div>
       ) : (
-        <div className="h-[400px] md:h-[500px] border rounded-md flex items-center justify-center text-muted-foreground p-4 text-center">
-          {processingStatus.isProcessing
-            ? "Processing... Please wait."
-            : "No analysis results yet. Select files and run analysis."}
+        <div className="h-[400px] md:h-[500px] gradient-card border rounded-xl flex items-center justify-center text-muted-foreground p-4 text-center">
+          <div className="space-y-3">
+            <div className="floating-animation">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center mx-auto">
+                <RefreshCw className="h-8 w-8 text-blue-600" />
+              </div>
+            </div>
+            <p className="gradient-text font-medium">
+              {processingStatus.isProcessing
+                ? "Processing... Please wait."
+                : "No analysis results yet. Select files and run analysis."}
+            </p>
+          </div>
         </div>
       )}
 
       <Dialog open={isMarkdownDialogOpen} onOpenChange={setIsMarkdownDialogOpen}>
-        <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl h-[90vh] flex flex-col gradient-card">
           <DialogHeader>
             <DialogTitle>Markdown Viewer</DialogTitle>
             <div className="flex justify-end">
