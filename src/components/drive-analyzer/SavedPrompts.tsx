@@ -15,7 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Save, Trash2, Menu } from "lucide-react";
+import { Save, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 export interface SavedPrompt {
@@ -47,8 +47,9 @@ export function SavedPrompts({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Menu className="h-4 w-4" />
+        <Button variant="outline" size="sm" className="hover:scale-105 transition-all duration-200 hover:shadow-md hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50 text-xs sm:text-sm">
+          <FileText className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Prompts</span>
         </Button>
       </SheetTrigger>
       <SheetContent>
