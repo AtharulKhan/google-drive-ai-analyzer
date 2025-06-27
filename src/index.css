@@ -114,7 +114,7 @@
 }
 
 @layer components {
-  /* Enhanced Glass UI components */
+  /* Glass UI components */
   .glass {
     @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-glass;
   }
@@ -127,14 +127,14 @@
     @apply hover:shadow-card-hover transition-all duration-300 ease-in-out transform hover:-translate-y-1;
   }
   
-  /* Enhanced Dashboard cards */
+  /* Dashboard cards */
   .dashboard-card {
-    @apply bg-white/90 backdrop-blur-sm rounded-xl shadow-card p-5 border border-border/30 hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1;
+    @apply bg-white rounded-xl shadow-card p-5 border border-border/50;
   }
   
-  /* Enhanced Stat cards */
+  /* Stat cards */
   .stat-card {
-    @apply dashboard-card flex flex-col justify-between hover:scale-105 transition-transform duration-300;
+    @apply dashboard-card flex flex-col justify-between;
   }
   
   .stat-value {
@@ -145,266 +145,101 @@
     @apply text-sm font-medium text-muted-foreground;
   }
   
-  /* Enhanced transitions */
+  /* Smooth transitions */
   .page-transition {
-    @apply transition-all duration-500 ease-in-out;
+    @apply transition-all duration-300 ease-in-out;
   }
   
-  /* Enhanced interactive elements */
+  /* Interactive elements */
   .interactive {
-    @apply transition-all duration-300 hover:brightness-105 active:brightness-95 hover:scale-105;
+    @apply transition-all duration-200 hover:brightness-105 active:brightness-95;
   }
   
-  /* Enhanced navigation links */
+  /* Navigation links */
   .nav-link {
-    @apply relative px-3 py-2 text-foreground/80 rounded-md transition-all duration-300 hover:text-foreground hover:bg-muted hover:scale-105;
+    @apply relative px-3 py-2 text-foreground/80 rounded-md transition-colors hover:text-foreground hover:bg-muted;
   }
   
   .nav-link.active {
-    @apply text-primary font-medium bg-primary/10 scale-105;
+    @apply text-primary font-medium bg-primary/10;
   }
   
-  /* Enhanced drag and drop zone */
+  /* Drag and drop zone */
   .drop-zone {
-    @apply border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer transition-all duration-300 hover:border-primary/50 hover:bg-primary/5 hover:scale-102;
+    @apply border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer transition-colors hover:border-primary/50 hover:bg-primary/5;
   }
   
-  /* Enhanced form inputs */
+  /* Form inputs with consistent styling */
   .form-input {
-    @apply rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all duration-300 hover:border-primary/50 focus-visible:scale-102;
+    @apply rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
-
-  /* New animated button styles */
-  .btn-gradient {
-    @apply bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105;
-  }
-
-  .btn-gradient-green {
-    @apply bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105;
-  }
-
-  .btn-gradient-purple {
-    @apply bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105;
-  }
-
-  /* Animated card styles */
-  .animated-card {
-    @apply backdrop-blur-sm bg-white/60 border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1;
-  }
-
-  /* Staggered animation container */
-  .stagger-container > * {
-    animation: fadeInUp 0.6s ease-out forwards;
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  .stagger-container > *:nth-child(1) { animation-delay: 0.1s; }
-  .stagger-container > *:nth-child(2) { animation-delay: 0.2s; }
-  .stagger-container > *:nth-child(3) { animation-delay: 0.3s; }
-  .stagger-container > *:nth-child(4) { animation-delay: 0.4s; }
-  .stagger-container > *:nth-child(5) { animation-delay: 0.5s; }
-  .stagger-container > *:nth-child(6) { animation-delay: 0.6s; }
 }
 
 @layer utilities {
-  /* Enhanced scrollbar */
+  /* Custom scrollbar */
   .custom-scrollbar {
     @apply scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/30;
   }
   
-  /* Enhanced text gradients */
+  /* Text gradients */
   .text-gradient {
     @apply bg-gradient-to-r from-primary to-agri-primary-light bg-clip-text text-transparent;
   }
-
-  .text-gradient-blue {
-    @apply bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent;
-  }
   
-  /* Enhanced centering utility */
+  /* Util for perfect centering */
   .center {
     @apply flex items-center justify-center;
   }
   
-  /* Enhanced badges */
+  /* Pill badge */
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-all duration-300 hover:scale-105;
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
   
   .badge-primary {
-    @apply badge bg-primary/10 text-primary hover:bg-primary/20;
+    @apply badge bg-primary/10 text-primary;
   }
   
   .badge-secondary {
-    @apply badge bg-secondary/10 text-secondary hover:bg-secondary/20;
+    @apply badge bg-secondary/10 text-secondary;
   }
   
   .badge-accent {
-    @apply badge bg-accent/10 text-accent-foreground hover:bg-accent/20;
+    @apply badge bg-accent/10 text-accent-foreground;
   }
   
   .badge-success {
-    @apply badge bg-agri-success/10 text-agri-success hover:bg-agri-success/20;
+    @apply badge bg-agri-success/10 text-agri-success;
   }
   
   .badge-warning {
-    @apply badge bg-agri-warning/10 text-agri-warning hover:bg-agri-warning/20;
+    @apply badge bg-agri-warning/10 text-agri-warning;
   }
   
   .badge-danger {
-    @apply badge bg-agri-danger/10 text-agri-danger hover:bg-agri-danger/20;
-  }
-
-  /* New animation utilities */
-  .animate-fade-in {
-    animation: fadeIn 0.6s ease-out forwards;
-  }
-
-  .animate-scale-in {
-    animation: scaleIn 0.5s ease-out forwards;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.6s ease-out forwards;
-  }
-
-  .animate-pulse-slow {
-    animation: pulseSlow 3s ease-in-out infinite;
-  }
-
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  .animate-accordion-down {
-    animation: accordionDown 0.3s ease-out forwards;
-  }
-
-  .hover-lift {
-    @apply transition-transform duration-300 ease-out hover:-translate-y-2 hover:shadow-lg;
-  }
-
-  .hover-scale {
-    @apply transition-transform duration-300 ease-out hover:scale-105;
+    @apply badge bg-agri-danger/10 text-agri-danger;
   }
 }
 
-/* Enhanced global transitions */
+/* Adding smooth transition to all elements */
 * {
-  @apply transition-colors duration-300;
+  @apply transition-colors duration-200;
 }
 
-/* Enhanced responsive adjustments */
+/* Responsive adjustments */
 .container {
   @apply px-4 md:px-6 lg:px-8;
 }
 
-/* Enhanced keyframe animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Animation classes */
+.animate-enter {
+  @apply animate-fade-in;
 }
 
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.animate-scale {
+  @apply animate-scale-in;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulseSlow {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes accordionDown {
-  from {
-    height: 0;
-    opacity: 0;
-  }
-  to {
-    height: var(--radix-accordion-content-height);
-    opacity: 1;
-  }
-}
-
-/* Enhanced backdrop blur effects */
-.backdrop-blur-glass {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Enhanced shadow effects */
-.shadow-glow {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
-}
-
-.shadow-glow-green {
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
-}
-
-.shadow-glow-purple {
-  box-shadow: 0 0 20px rgba(147, 51, 234, 0.15);
-}
-
-/* Gradient border effects */
-.gradient-border {
-  position: relative;
-  background: linear-gradient(white, white) padding-box,
-    linear-gradient(45deg, #3b82f6, #8b5cf6) border-box;
-  border: 2px solid transparent;
-}
-
-.gradient-border-green {
-  background: linear-gradient(white, white) padding-box,
-    linear-gradient(45deg, #10b981, #059669) border-box;
-  border: 2px solid transparent;
+.hover-lift {
+  @apply transition-transform duration-300 ease-out hover:-translate-y-1;
 }
