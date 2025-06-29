@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { ApifyCrawlingOptions } from '@/utils/apify-api';
 import { toast } from 'sonner';
@@ -39,6 +38,7 @@ export default function useAnalysisState() {
   // Files state
   const [selectedFiles, setSelectedFiles] = useState<GoogleFile[]>([]);
   const [displayFiles, setDisplayFiles] = useState<GoogleFile[]>([]);
+  const [localFiles, setLocalFiles] = useState<File[]>([]);
   
   // Text/URL inputs state
   const [pastedText, setPastedText] = useState<string>("");
@@ -122,6 +122,19 @@ export default function useAnalysisState() {
   const handleClearFiles = useCallback(() => {
     setSelectedFiles([]);
     setDisplayFiles([]);
+  }, []);
+
+  // Handle local file operations
+  const handleAddLocalFiles = useCallback((newFiles: File[]) => {
+    setLocalFiles(prev => [...prev, ...newFiles]);
+  }, []);
+
+  const handleRemoveLocalFile = useCallback((fileKey: string) => {
+    setLocalFiles(prev => prev.filter(file => `${file.name}-${file.lastModified}` !== fileKey));
+  }, []);
+
+  const handleClearLocalFiles = useCallback(() => {
+    setLocalFiles([]);
   }, []);
   
   // Handle URL operations
@@ -248,6 +261,13 @@ export default function useAnalysisState() {
     handleAddFiles,
     handleRemoveFile,
     handleClearFiles,
+    
+    // Local files
+    localFiles,
+    setLocalFiles,
+    handleAddLocalFiles,
+    handleRemoveLocalFile,
+    handleClearLocalFiles,
     
     // Text/URL inputs
     pastedText,
