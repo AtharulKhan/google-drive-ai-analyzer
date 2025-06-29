@@ -466,15 +466,15 @@ export default function DriveAnalyzer() {
   }, [isUnifiedViewOpen]);
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-6 animate-fade-in">
+    <div className="container mx-auto p-4 space-y-6">
       <Card className="w-full shadow-xl border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900 backdrop-blur-sm relative overflow-hidden">
         <div className="absolute inset-0"></div>
         <div className="absolute inset-[1px] rounded-lg bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900"></div>
         
         <div className="relative z-10">
           <CardContent className="p-3 sm:p-4 lg:p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 mb-4 sm:mb-6 bg-gradient-to-r from-slate-100/80 to-blue-100/60 dark:from-gray-800/80 dark:to-gray-700/60 border border-white/20 backdrop-blur-sm animate-fade-in w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white animate-slide-in text-sm">
                   Files & Settings
                 </TabsTrigger>
@@ -483,7 +483,7 @@ export default function DriveAnalyzer() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="files" className="animate-fade-in space-y-4 sm:space-y-6">
+              <TabsContent value="files" className="animate-fade-in space-y-4">
                 <div className="space-y-4 sm:space-y-6">
                   <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/20">
                     <TooltipProvider>
@@ -621,6 +621,7 @@ export default function DriveAnalyzer() {
                     localFiles={localFiles}
                     displayFiles={displayFiles}
                     onRemoveGoogleFile={handleRemoveFile}
+                    onRemoveLocalFile={handleRemoveLocalFile}
                     onClearGoogleFiles={handleClearFiles}
                     selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
                     savedAnalyses={savedAnalyses}
