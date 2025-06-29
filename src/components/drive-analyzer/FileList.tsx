@@ -16,6 +16,7 @@ interface FileListProps {
   localFiles?: File[];
   displayFiles?: GoogleFile[];
   onRemoveGoogleFile?: (fileId: string) => void;
+  onRemoveLocalFile?: (fileKey: string) => void;
   onClearGoogleFiles?: () => void;
   selectedAnalysisIdsForPrompt?: string[];
   savedAnalyses?: SavedAnalysis[];
@@ -31,11 +32,15 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+// Helper to generate file key for local files
+const getFileKey = (file: File): string => `${file.name}-${file.lastModified}`;
+
 export function FileList({
   googleFiles = [],
   localFiles = [],
   displayFiles = [],
   onRemoveGoogleFile,
+  onRemoveLocalFile,
   onClearGoogleFiles,
   selectedAnalysisIdsForPrompt = [],
   savedAnalyses = [],
@@ -130,27 +135,45 @@ export function FileList({
 
   const handleSelectAllLocalFiles = (checked: boolean) => {
     if (checked) {
-      setSelectedLocalFiles(new Set(localFiles.map(file => `${file.name}-${file.lastModified}`)));
+      setSelectedLocalFiles(new Set(localFiles.map(file => getFileKey(file))));
     } else {
       setSelectedLocalFiles(new Set());
     }
   };
 
   const handleRemoveSelectedFiles = () => {
+    let removedCount = 0;
+    
+    // Remove selected Google Drive files
     if (onRemoveGoogleFile) {
       selectedGoogleFiles.forEach(fileId => {
         onRemoveGoogleFile(fileId);
+        removedCount++;
       });
     }
     
-    // For local files, we would need a removal handler from parent
-    // Since it's not provided, we'll just clear the selection
+    // Remove selected local files
+    if (onRemoveLocalFile) {
+      selectedLocalFiles.forEach(fileKey => {
+        onRemoveLocalFile(fileKey);
+        removedCount++;
+      });
+    }
+    
+    // Clear selections
     setSelectedGoogleFiles(new Set());
     setSelectedLocalFiles(new Set());
     
-    const removedCount = selectedGoogleFiles.size + selectedLocalFiles.size;
     if (removedCount > 0) {
       toast.success(`Removed ${removedCount} file(s)`);
+    }
+  };
+
+  const handleRemoveLocalFile = (file: File) => {
+    if (onRemoveLocalFile) {
+      const fileKey = getFileKey(file);
+      onRemoveLocalFile(fileKey);
+      toast.success(`Removed "${file.name}"`);
     }
   };
 
@@ -290,7 +313,7 @@ export function FileList({
 
               {/* Display Local Files */}
               {localFiles.map((file) => {
-                const fileKey = `${file.name}-${file.lastModified}`;
+                const fileKey = getFileKey(file);
                 return (
                   <li
                     key={`local-${fileKey}`}
@@ -319,6 +342,16 @@ export function FileList({
                     >
                       <Save className="h-3 w-3" />
                     </Button>
+                    {onRemoveLocalFile && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => handleRemoveLocalFile(file)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </li>
                 );
               })}
