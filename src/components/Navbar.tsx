@@ -65,47 +65,35 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Fixed Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-border shadow-sm">
-        <div className="flex items-center justify-between h-full px-4">
-          {/* Mobile Menu Toggle */}
-          <button 
-            onClick={toggleSidebar} 
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors md:hidden"
-            aria-label="Toggle navigation"
-          >
-            {isOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+      {/* Mobile Navigation Toggle with improved animation */}
+      <div className="fixed top-4 left-4 z-50 md:hidden">
+        <button 
+          onClick={toggleSidebar} 
+          className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-all active:scale-95 dark:bg-gray-800 dark:hover:bg-gray-700"
+          aria-label="Toggle navigation"
+        >
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
 
-          {/* Logo/Brand */}
-          <Link to="/" className="flex items-center space-x-2 md:hidden">
-            <Cloud className="h-5 w-5 text-agri-primary" />
-            <span className="text-sm font-bold text-foreground">Drive AI</span>
-          </Link>
-
-          {/* Theme Toggle */}
-          <button 
-            onClick={toggleTheme} 
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label="Toggle theme"
-          >
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-        </div>
-      </header>
-
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation with improved animation and transitions */}
       <aside 
         className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-border shadow-lg transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        } md:relative md:translate-x-0 flex flex-col h-full overflow-y-auto pt-14 md:pt-0`}
+        } md:relative md:translate-x-0 flex flex-col h-full overflow-y-auto`}
       >
-        {/* Desktop Header */}
-        <div className="p-4 border-b border-border hidden md:flex items-center justify-between">
+        <div className="p-4 border-b border-border flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <Cloud className="h-6 w-6 text-agri-primary" />
             <span className="text-lg font-bold text-foreground">Drive AI Analyzer</span>
           </Link>
+          <button 
+            onClick={toggleTheme} 
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
@@ -172,7 +160,7 @@ const Navbar = () => {
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
+      {/* Overlay for mobile with improved transition */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden backdrop-blur-sm transition-opacity duration-300"
