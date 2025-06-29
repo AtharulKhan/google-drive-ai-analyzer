@@ -481,12 +481,14 @@ export default function DriveAnalyzer() {
         <div className="relative z-10">
           <CardContent className="p-3 sm:p-4 lg:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white animate-slide-in text-sm">
-                  Files & Settings
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+                <TabsTrigger value="files" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white animate-slide-in text-xs sm:text-sm px-2 py-2">
+                  <span className="hidden sm:inline">Files & Settings</span>
+                  <span className="sm:hidden">Files</span>
                 </TabsTrigger>
-                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white animate-slide-in-delayed text-sm">
-                  AI Results
+                <TabsTrigger value="result" className="transition-all duration-200 hover:bg-white/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white animate-slide-in-delayed text-xs sm:text-sm px-2 py-2">
+                  <span className="hidden sm:inline">AI Results</span>
+                  <span className="sm:hidden">Results</span>
                 </TabsTrigger>
               </TabsList>
 
