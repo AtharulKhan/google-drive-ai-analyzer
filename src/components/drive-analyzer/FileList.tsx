@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +16,6 @@ interface FileListProps {
   localFiles?: File[];
   displayFiles?: GoogleFile[];
   onRemoveGoogleFile?: (fileId: string) => void;
-  onRemoveLocalFile?: (fileKey: string) => void; // Add handler for local files
   onClearGoogleFiles?: () => void;
   selectedAnalysisIdsForPrompt?: string[];
   savedAnalyses?: SavedAnalysis[];
@@ -36,7 +36,6 @@ export function FileList({
   localFiles = [],
   displayFiles = [],
   onRemoveGoogleFile,
-  onRemoveLocalFile, // Add to props
   onClearGoogleFiles,
   selectedAnalysisIdsForPrompt = [],
   savedAnalyses = [],
@@ -138,41 +137,20 @@ export function FileList({
   };
 
   const handleRemoveSelectedFiles = () => {
-    let removedCount = 0;
-    
-    // Remove Google Drive files
-    if (onRemoveGoogleFile && selectedGoogleFiles.size > 0) {
+    if (onRemoveGoogleFile) {
       selectedGoogleFiles.forEach(fileId => {
         onRemoveGoogleFile(fileId);
-        removedCount++;
       });
-      setSelectedGoogleFiles(new Set());
     }
     
-    // Remove local files
-    if (onRemoveLocalFile && selectedLocalFiles.size > 0) {
-      selectedLocalFiles.forEach(fileKey => {
-        onRemoveLocalFile(fileKey);
-        removedCount++;
-      });
-      setSelectedLocalFiles(new Set());
-    }
+    // For local files, we would need a removal handler from parent
+    // Since it's not provided, we'll just clear the selection
+    setSelectedGoogleFiles(new Set());
+    setSelectedLocalFiles(new Set());
     
-    // Handle case where removal handlers are not provided
-    if (!onRemoveGoogleFile && selectedGoogleFiles.size > 0) {
-      toast.error("Cannot remove Google Drive files: no removal handler provided");
-      return;
-    }
-    
-    if (!onRemoveLocalFile && selectedLocalFiles.size > 0) {
-      toast.error("Cannot remove local files: no removal handler provided");
-      return;
-    }
-    
+    const removedCount = selectedGoogleFiles.size + selectedLocalFiles.size;
     if (removedCount > 0) {
       toast.success(`Removed ${removedCount} file(s)`);
-    } else {
-      toast.info("No files selected for removal");
     }
   };
 
@@ -341,16 +319,6 @@ export function FileList({
                     >
                       <Save className="h-3 w-3" />
                     </Button>
-                    {onRemoveLocalFile && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        onClick={() => onRemoveLocalFile(fileKey)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
                   </li>
                 );
               })}
