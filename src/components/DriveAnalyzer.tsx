@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +13,7 @@ import { useDrivePicker } from "@/hooks/useDrivePicker";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 
 import { FileList } from "./drive-analyzer/FileList";
-import { LocalFileInput } from "./drive-analyzer/LocalFileInput";
+import LocalFileInput from "./drive-analyzer/LocalFileInput";
 import { TextUrlInput } from "./drive-analyzer/TextUrlInput";
 import { CrawlingOptions } from "./drive-analyzer/CrawlingOptions";
 import { ConfigurationOptions } from "./drive-analyzer/ConfigurationOptions";
@@ -22,6 +23,7 @@ import { SavedPrompts } from "./drive-analyzer/SavedPrompts";
 import { SavedAnalysesSidebar } from "./drive-analyzer/SavedAnalysesSidebar";
 import { CachedDocumentsManager } from "./drive-analyzer/CachedDocumentsManager";
 
+// Import utility functions - we'll assume they exist with default exports
 import { analyzeWithAI } from "@/utils/openrouter-api";
 import { crawlUrls } from "@/utils/scraping";
 import { processLocalFiles } from "@/utils/local-file-processor";
@@ -68,6 +70,7 @@ export default function DriveAnalyzer() {
     handleDeleteAnalysis,
     handleDeleteAllAnalyses,
     selectedAnalysisIdsForPrompt,
+    setSelectedAnalysisIdsForPrompt,
     toggleAnalysisSelectionForPrompt,
     handleImportAnalysis,
   } = useAnalysisState();
@@ -216,10 +219,10 @@ export default function DriveAnalyzer() {
         prompt: userPrompt,
         aiOutput: aiOutput,
         sources: [
-          ...selectedFiles.map((file) => ({ id: file.id, name: file.name, type: "google" })),
-          ...localFiles.map((file) => ({ id: `${file.name}-${file.lastModified}`, name: file.name, type: "local" })),
-          ...urls.map((url) => ({ id: url, name: url, type: "url" })),
-          ...(pastedText ? [{ id: "pasted-text", name: "Pasted Text", type: "text" }] : []),
+          ...selectedFiles.map((file) => ({ id: file.id, name: file.name, type: "file" as const })),
+          ...localFiles.map((file) => ({ id: `${file.name}-${file.lastModified}`, name: file.name, type: "file" as const })),
+          ...urls.map((url) => ({ id: url, name: url, type: "url" as const })),
+          ...(pastedText ? [{ id: "pasted-text", name: "Pasted Text", type: "text" as const }] : []),
         ],
       };
       handleSaveAnalysis(analysisToSave);
@@ -236,6 +239,10 @@ export default function DriveAnalyzer() {
     handleClearPastedText();
     setSelectedAnalysisIdsForPrompt([]);
     setAiOutput("");
+  };
+
+  const handleOpenPicker = () => {
+    openPicker({}, handleAddFiles);
   };
 
   return (
@@ -284,7 +291,7 @@ export default function DriveAnalyzer() {
                 <TabsContent value="files" className="space-y-4">
                   <div className="flex flex-wrap gap-2">
                     {isSignedIn ? (
-                      <Button onClick={openPicker} variant="outline" className="flex items-center gap-2">
+                      <Button onClick={handleOpenPicker} variant="outline" className="flex items-center gap-2">
                         <FileDown className="h-4 w-4" />
                         Pick from Google Drive
                       </Button>
@@ -297,7 +304,7 @@ export default function DriveAnalyzer() {
                   </div>
                   
                   <LocalFileInput 
-                    onFilesAdded={handleAddLocalFiles}
+                    onFilesSelected={handleAddLocalFiles}
                     acceptedTypes=".txt,.pdf,.doc,.docx,.json,.csv,.md"
                   />
 
@@ -317,7 +324,7 @@ export default function DriveAnalyzer() {
                 <TabsContent value="text" className="space-y-4">
                   <TextUrlInput
                     currentUrlInput={currentUrlInput}
-                    setCurrentUrlInput={setCurrentUrlInput}
+                    onCurrentUrlInputChange={setCurrentUrlInput}
                     urls={urls}
                     onAddUrl={handleAddUrl}
                     onRemoveUrl={handleRemoveUrl}
@@ -355,8 +362,14 @@ export default function DriveAnalyzer() {
               <CardDescription>Adjust crawling and analysis settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <CrawlingOptions crawlingOptions={crawlingOptions} onCrawlingOptionsChange={handleCrawlingOptionsChange} />
-              <ConfigurationOptions customInstructions={customInstructions} setCustomInstructions={setCustomInstructions} />
+              <CrawlingOptions 
+                options={crawlingOptions} 
+                onOptionsChange={handleCrawlingOptionsChange} 
+              />
+              <ConfigurationOptions 
+                instructions={customInstructions} 
+                onInstructionsChange={setCustomInstructions} 
+              />
             </CardContent>
           </Card>
 
@@ -397,7 +410,11 @@ export default function DriveAnalyzer() {
                   </Button>
                 </div>
               </div>
-              <AnalysisResults aiOutput={aiOutput} />
+              <AnalysisResults 
+                aiOutput={aiOutput} 
+                processingStatus={processingStatus}
+                currentAnalysisResult={null}
+              />
             </CardContent>
           </Card>
         </div>
@@ -406,12 +423,12 @@ export default function DriveAnalyzer() {
         <div className="lg:col-span-1">
           <SavedAnalysesSidebar
             savedAnalyses={savedAnalyses}
-            handleRenameAnalysis={handleRenameAnalysis}
-            handleDeleteAnalysis={handleDeleteAnalysis}
-            handleDeleteAllAnalyses={handleDeleteAllAnalyses}
+            onRenameAnalysis={handleRenameAnalysis}
+            onDeleteAnalysis={handleDeleteAnalysis}
+            onDeleteAllAnalyses={handleDeleteAllAnalyses}
             selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
-            toggleAnalysisSelectionForPrompt={toggleAnalysisSelectionForPrompt}
-            handleImportAnalysis={handleImportAnalysis}
+            onToggleAnalysisSelection={toggleAnalysisSelectionForPrompt}
+            onImportAnalysis={handleImportAnalysis}
           />
 
           <div className="mt-6">
@@ -458,7 +475,7 @@ export default function DriveAnalyzer() {
       </div>
 
       {/* Processing Status */}
-      <ProcessingStatus processingStatus={processingStatus} />
+      <ProcessingStatus status={processingStatus} />
     </div>
   );
 }

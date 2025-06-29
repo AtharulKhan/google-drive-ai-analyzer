@@ -1,12 +1,14 @@
+
 import React, { useCallback } from 'react';
-import { Button } from '@/components/ui/button'; // Assuming this path is correct
+import { Button } from '@/components/ui/button';
 
 interface LocalFileInputProps {
   onFilesSelected: (files: File[]) => void;
+  acceptedTypes?: string;
   className?: string;
 }
 
-const LocalFileInput: React.FC<LocalFileInputProps> = ({ onFilesSelected, className }) => {
+const LocalFileInput: React.FC<LocalFileInputProps> = ({ onFilesSelected, acceptedTypes, className }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = useCallback(
@@ -26,12 +28,13 @@ const LocalFileInput: React.FC<LocalFileInputProps> = ({ onFilesSelected, classN
   return (
     <div className={className}>
       <input
-        data-testid="local-file-input" // Added data-testid for testing
+        data-testid="local-file-input"
         type="file"
         multiple
+        accept={acceptedTypes}
         ref={fileInputRef}
         onChange={handleFileChange}
-        style={{ display: 'none' }} // Hide the default input
+        style={{ display: 'none' }}
       />
       <Button onClick={handleClick} variant="outline">
         Select Files
