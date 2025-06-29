@@ -18,7 +18,7 @@ const PageLayout = ({ children, title, description }: PageLayoutProps) => {
       <div className="flex-1 overflow-y-auto pb-16 md:pb-0 animate-fade-in">
         <div className={`mx-auto py-4 transition-all duration-300 ${
           isMobile 
-            ? 'px-0 max-w-full w-full' 
+            ? 'px-0 max-w-full w-full mt-16' // Added top margin for mobile to avoid hamburger menu
             : 'px-6 max-w-7xl container'
         }`}>
           {children}
