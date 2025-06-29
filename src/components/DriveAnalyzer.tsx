@@ -23,9 +23,9 @@ import { SavedPrompts } from "./drive-analyzer/SavedPrompts";
 import { SavedAnalysesSidebar } from "./drive-analyzer/SavedAnalysesSidebar";
 import { CachedDocumentsManager } from "./drive-analyzer/CachedDocumentsManager";
 
-// Import utility functions - we'll assume they exist with default exports
-import { analyzeWithAI } from "@/utils/openrouter-api";
-import { crawlUrls } from "@/utils/scraping";
+// Import utility functions with correct names
+import { analyzeWithOpenRouter } from "@/utils/openrouter-api";
+import { scrapeUrls } from "@/utils/scraping";
 import { processLocalFiles } from "@/utils/local-file-processor";
 import { fetchFileContent } from "@/utils/google-api";
 import { sendToWebhook } from "@/utils/webhook-sender";
@@ -164,11 +164,9 @@ export default function DriveAnalyzer() {
       // 4. URLs
       if (urls.length > 0) {
         setProcessingStatus((prev) => ({ ...prev, currentStep: "Crawling URLs..." }));
-        const crawledContent = await crawlUrls(urls, crawlingOptions);
-        crawledContent.forEach((content, index) => {
-          allContent += `\n\n${urls[index]}:\n${content}`;
-          setProcessingStatus((prev) => ({ ...prev, processedFiles: prev.processedFiles + 1, progress: (prev.processedFiles / prev.totalFiles) * 100 }));
-        });
+        const { combinedText } = await scrapeUrls(urls);
+        allContent += `\n\nWeb Content:\n${combinedText}`;
+        setProcessingStatus((prev) => ({ ...prev, processedFiles: prev.processedFiles + urls.length, progress: (prev.processedFiles / prev.totalFiles) * 100 }));
       }
 
       // 5. Pasted Text
@@ -178,7 +176,7 @@ export default function DriveAnalyzer() {
 
       // Analyze with AI
       setProcessingStatus((prev) => ({ ...prev, currentStep: "Analyzing with AI..." }));
-      const analysis = await analyzeWithAI(allContent, userPrompt, customInstructions);
+      const analysis = await analyzeWithOpenRouter(allContent, userPrompt);
       setAiOutput(analysis);
 
       // Send to Webhook
@@ -323,26 +321,18 @@ export default function DriveAnalyzer() {
 
                 <TabsContent value="text" className="space-y-4">
                   <TextUrlInput
+                    pastedText={pastedText}
+                    onPastedTextChange={handlePastedTextChange}
+                    urls={urls}
+                    onUrlAdd={handleAddUrl}
+                    onUrlRemove={handleRemoveUrl}
+                    onClearPastedText={handleClearPastedText}
+                    onClearUrls={handleClearUrls}
                     currentUrlInput={currentUrlInput}
                     onCurrentUrlInputChange={setCurrentUrlInput}
-                    urls={urls}
-                    onAddUrl={handleAddUrl}
-                    onRemoveUrl={handleRemoveUrl}
-                    onClearUrls={handleClearUrls}
-                    webhookUrl={webhookUrl}
-                    onWebhookUrlChange={handleWebhookUrlChange}
+                    crawlingOptions={crawlingOptions}
+                    onCrawlingOptionsChange={handleCrawlingOptionsChange}
                   />
-                  <Textarea
-                    placeholder="Paste your text here..."
-                    value={pastedText}
-                    onChange={(e) => handlePastedTextChange(e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                  <div className="flex justify-end">
-                    <Button variant="secondary" size="sm" onClick={handleClearPastedText}>
-                      Clear Text
-                    </Button>
-                  </div>
                 </TabsContent>
 
                 <TabsContent value="cache" className="space-y-4">
@@ -364,11 +354,18 @@ export default function DriveAnalyzer() {
             <CardContent className="space-y-4">
               <CrawlingOptions 
                 options={crawlingOptions} 
-                onOptionsChange={handleCrawlingOptionsChange} 
+                onChange={handleCrawlingOptionsChange} 
               />
               <ConfigurationOptions 
-                instructions={customInstructions} 
-                onInstructionsChange={setCustomInstructions} 
+                aiModel="gpt-4.1-2025-04-14"
+                setAiModel={() => {}}
+                maxFiles={50}
+                setMaxFiles={() => {}}
+                includeSubfolders={false}
+                setIncludeSubfolders={() => {}}
+                maxDocChars={50000}
+                webhookUrl={webhookUrl}
+                handleWebhookUrlChange={handleWebhookUrlChange}
               />
             </CardContent>
           </Card>
@@ -427,7 +424,7 @@ export default function DriveAnalyzer() {
             onDeleteAnalysis={handleDeleteAnalysis}
             onDeleteAllAnalyses={handleDeleteAllAnalyses}
             selectedAnalysisIdsForPrompt={selectedAnalysisIdsForPrompt}
-            onToggleAnalysisSelection={toggleAnalysisSelectionForPrompt}
+            onToggleAnalysisSelectionForPrompt={toggleAnalysisSelectionForPrompt}
             onImportAnalysis={handleImportAnalysis}
           />
 
