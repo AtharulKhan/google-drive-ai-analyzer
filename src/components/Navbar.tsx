@@ -16,12 +16,14 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const location = useLocation();
   const { isSignedIn, loading, signIn, signOut } = useGoogleAuth();
+  const isMobile = useIsMobile();
   
   // Close mobile menu when route changes
   useEffect(() => {
@@ -65,36 +67,55 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Mobile Navigation Toggle with improved animation */}
-      <div className="fixed top-4 left-4 z-50 md:hidden">
-        <button 
-          onClick={toggleSidebar} 
-          className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-all active:scale-95 dark:bg-gray-800 dark:hover:bg-gray-700"
-          aria-label="Toggle navigation"
-        >
-          {isOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
-
-      {/* Sidebar Navigation with improved animation and transitions */}
-      <aside 
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-border shadow-lg transform transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        } md:relative md:translate-x-0 flex flex-col h-full overflow-y-auto`}
-      >
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <Cloud className="h-6 w-6 text-agri-primary" />
-            <span className="text-lg font-bold text-foreground">Drive AI Analyzer</span>
-          </Link>
+      {/* Mobile Navigation Toggle - positioned within the header */}
+      {isMobile && (
+        <div className="fixed top-4 right-4 z-50">
           <button 
-            onClick={toggleTheme} 
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            aria-label="Toggle theme"
+            onClick={toggleSidebar} 
+            className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-all active:scale-95 dark:bg-gray-800 dark:hover:bg-gray-700"
+            aria-label="Toggle navigation"
           >
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            {isOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
+      )}
+
+      {/* Sidebar Navigation */}
+      <aside 
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-border shadow-lg transform transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : isMobile ? '-translate-x-full' : 'translate-x-0'
+        } ${isMobile ? 'top-16' : 'top-0'} md:relative md:translate-x-0 md:top-0 flex flex-col overflow-y-auto`}
+        style={{ height: isMobile ? 'calc(100vh - 4rem)' : '100vh' }}
+      >
+        {/* Desktop header - only show on desktop */}
+        {!isMobile && (
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <Link to="/" className="flex items-center space-x-2">
+              <Cloud className="h-6 w-6 text-agri-primary" />
+              <span className="text-lg font-bold text-foreground">Drive AI Analyzer</span>
+            </Link>
+            <button 
+              onClick={toggleTheme} 
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
+        )}
+
+        {/* Mobile theme toggle - only show on mobile */}
+        {isMobile && (
+          <div className="p-4 border-b border-border flex items-center justify-end">
+            <button 
+              onClick={toggleTheme} 
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
+        )}
 
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
@@ -160,10 +181,11 @@ const Navbar = () => {
         </div>
       </aside>
 
-      {/* Overlay for mobile with improved transition */}
-      {isOpen && (
+      {/* Overlay for mobile */}
+      {isOpen && isMobile && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden backdrop-blur-sm transition-opacity duration-300"
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 backdrop-blur-sm transition-opacity duration-300"
+          style={{ top: '4rem' }}
           onClick={() => setIsOpen(false)}
         ></div>
       )}
