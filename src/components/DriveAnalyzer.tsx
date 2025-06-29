@@ -128,6 +128,13 @@ export default function DriveAnalyzer() {
     input.click();
   }, [handleLocalFilesSelected]);
 
+  const handleRemoveLocalFile = useCallback((fileKey: string) => {
+    setLocalFiles(prev => prev.filter(file => {
+      const key = `${file.name}-${file.lastModified}`;
+      return key !== fileKey;
+    }));
+  }, []);
+
   const handleBrowseDrive = useCallback(() => {
     if (!isReady) {
       toast.error("Google Drive Picker is not ready");
